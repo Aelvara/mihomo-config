@@ -307,5 +307,3 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 - 2025-08-19 修复 ChatGPT 规则，合并为新的 AI 代理分组
 - 2025-07-21 新增规则：哔哩哔哩港澳台
 - 2025-07-02 新增 Mihomo Party 覆写脚本（YAML 格式）
-
-相关视频：<https://www.youtube.com/watch?v=sp6Iafweo7I>
