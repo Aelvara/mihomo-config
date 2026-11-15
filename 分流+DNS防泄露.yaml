@@ -16,15 +16,12 @@
 # 3.5：又拆成两个组 —— 🎬 流媒体（31 类，默认走 ⚡ 流媒体测速）与 📱 社交平台（18 类，默认美国）；tiktok 归流媒体。
 # ============================================================
 
-
-
 # ============================================================
 # 核心网络设置
 # ============================================================
 
 # 关闭 IPv6，避免 IPv4 / IPv6 出口不一致
 ipv6: false
-
 
 # ============================================================
 # TUN
@@ -39,7 +36,6 @@ tun:
   dns-hijack:
     - any:53
     - tcp://any:53
-
 
 # ============================================================
 # DNS
@@ -127,7 +123,6 @@ dns:
 # 恢复远程规则的方法：在此处重新写 rule-providers 段，并在 rules 里把对应
 #      GEOSITE,xxx,<策略> 换回 RULE-SET 写法（RULE-SET + 分隔符 + provider 名 + 策略）。
 
-
 # ============================================================
 # Proxy Groups
 # ============================================================
@@ -159,16 +154,6 @@ proxy-groups:
       - "🌍 其他地区 [系统]"
       - "🌐 全部节点 [系统]"
       - DIRECT
-
-  - name: "⚡ 流媒体测速 [系统]"
-    type: url-test
-    include-all-proxies: true
-    filter: '(?i)高速专线|三网推荐|AWS|东京|新加坡|香港|\bHK\b|\bSG\b|\bJP\b|\bTW\b|Taipei'
-    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
-    url: "https://www.gstatic.com/generate_204"
-    interval: 300
-    tolerance: 100
-    lazy: false
 
   - name: "🎬 流媒体 [自选]"
     type: select
@@ -271,7 +256,6 @@ proxy-groups:
       - "🌐 全部节点 [系统]"
       - DIRECT
 
-
   # ---------- 系统组 ----------
 
   - name: "🌐 全部节点 [系统]"
@@ -292,11 +276,19 @@ proxy-groups:
     tolerance: 50
     lazy: false
 
-
   # ==========================================================
   # 地区节点
   # ==========================================================
 
+  - name: "⚡ 流媒体测速 [系统]"
+    type: url-test
+    include-all-proxies: true
+    filter: '(?i)高速专线|三网推荐|AWS|东京|新加坡|香港|\bHK\b|\bSG\b|\bJP\b|\bTW\b|Taipei'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    url: "https://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 100
+    lazy: false
   - name: "🇭🇰 香港节点 [系统]"
     type: url-test
     include-all-proxies: true
@@ -354,7 +346,6 @@ proxy-groups:
     tolerance: 50
     lazy: true
 
-
   # ==========================================================
   # 其他地区
   #
@@ -374,7 +365,6 @@ proxy-groups:
     exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
     exclude-type: "Direct"
 
-
   # ---------- 广告拦截 ----------
 
   - name: "🛑 广告拦截 [系统]"
@@ -382,7 +372,6 @@ proxy-groups:
     proxies:
       - REJECT
       - DIRECT
-
 
 # ============================================================
 # Rules

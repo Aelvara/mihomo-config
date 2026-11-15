@@ -115,6 +115,8 @@ fake-ip-filter:
 | `🎬 流媒体 [自选]` | select | **31 个视频 GEOSITE**（含 tiktok） | 指向 `⚡ 流媒体测速` |
 | `📱 社交平台 [自选]` | select | **18 个社媒 GEOSITE** | `🇺🇸 美国节点 [系统]` |
 
+`⚡ 流媒体测速 [系统]` 在 `proxy-groups` 里紧跟在 `♻️ 自动选择 [系统]` 之后，UI 上就排在它下面 —— 两者都是 "按延迟挑节点" 的 url-test 组，放一起便于对照和手动切换。
+
 **为什么拆**：视频要的是带宽和延迟 —— 同一个订阅下实测 `♻️ 自动选择` 196ms（新加坡）、`🇯🇵 日本` 387ms、`🇺🇸 美国` **1820ms**，用美国落地拉 4K 会明显变慢；社交要的是**落地稳定**，账号地区不能来回漂，否则容易触发二次验证。3.4 的「一个组一个出口」只能二选一，3.5 让两者各走各的。
 
 **为什么测速组单独建，不直接用 `♻️ 自动选择`**：`♻️ 自动选择` 的探测地址是 `https://1.1.1.1/dns-query`（3.0 起为了让 DNS 有可用上游而改的），量的是「DoH 通不通」，完全不代表带宽。测速组用 `gstatic.com/generate_204` 单独量延迟。代价是多一个组要维护。
@@ -175,7 +177,7 @@ fake-ip-filter:
 
 #### 测速组实测成员与延迟
 
-`⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 300`、`tolerance: 100`、`lazy: false`）在某三毛机场订阅下的实测结果：
+`⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 600`、`tolerance: 100`、`lazy: false`）在某三毛机场订阅下的实测结果：
 
 | 节点 | 延迟 |
 | --- | --- |
@@ -389,9 +391,12 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 - **2026-11-15 · 3.5**
   - 又拆回两个组：`📱 社媒与流媒体 [自选]` → `🎬 流媒体 [自选]`（31 个视频 GEOSITE）与 `📱 社交平台 [自选]`（18 个社媒 GEOSITE）；`rules` 仍 90 条，组数 19 → 20
-  - 新增 `⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 300`、`tolerance: 100`、`lazy: false`），filter 收 高速专线 / 三网推荐 / AWS / 东京 / 新加坡 / 香港 / HK / SG / JP / TW / Taipei，实测 10 个候选，选中 `新加坡1|高速下载|移动优化`（209 ms，同组最慢的 2x专线-新加坡-3 为 997 ms）
+  - 新增 `⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 600`、`tolerance: 100`、`lazy: false`），filter 收 高速专线 / 三网推荐 / AWS / 东京 / 新加坡 / 香港 / HK / SG / JP / TW / Taipei，实测 10 个候选，选中 `新加坡1|高速下载|移动优化`（209 ms，同组最慢的 2x专线-新加坡-3 为 997 ms）
   - `🎬 流媒体` 默认指向 `⚡ 流媒体测速`；`📱 社交平台` 默认 `🇺🇸 美国节点 [系统]`（美国-HY2-55，201 ms）
   - `GEOSITE,tiktok` 从社媒侧移到视频侧（TikTok 主要负载是视频流）；Pinterest / Imgur 留在社媒侧不动
+- **2026-11-15 · 3.5 微调**
+  - `⚡ 流媒体测速` 的 `interval` 由 `300` 改为 `600`（减少每 5 分钟 × 10 个成员的测速开销）
+  - `⚡ 流媒体测速` 整块移到 `♻️ 自动选择 [系统]` 之后（`proxy-groups` 顺序即 UI 顺序）
   - 实测：浏览器打开 youtube / netflix / tiktok / twitch 全部走 `🎬 流媒体 [自选][新加坡1|高速下载|移动优化]`，instagram / x.com / pinterest 全部走 `📱 社交平台 [自选][美国-HY2-55]`，重载后落回 `MATCH` 的媒体/社媒域名 0 条
 - **2026-11-15 · 3.4**
   - 组名 `🎬 流媒体 [自选]` → **`📱 社媒与流媒体 [自选]`**，境外主流社交平台并入同一组；`rules` 71 条 → **90 条**（组数仍 19）
