@@ -1,9 +1,9 @@
 # archive · 历史配置存档
 
 这里放的是本仓库更名/重构**之前**各代配置文件，**只读留档，不再维护**。
-当前在用的产物只剩三份，在仓库根目录与 `Sparkle/`：`分流+DNS防泄露.yaml`（3.1）、`Sparkle/mihomo.yaml`、`Sparkle/config.yaml`。
+当前在用的产物只剩三份，在仓库根目录与 `Sparkle/`：`分流+DNS防泄露.yaml`（3.2）、`Sparkle/mihomo.yaml`、`Sparkle/config.yaml`。
 
-为什么要归档：这批老文件是**给 Clash Verge 全局扩展脚本用的** —— 靠 JS 在运行时注入 `dns` 段和 `proxy-groups`。Sparkle / Mihomo Party 没有这个机制，而且即便在 Clash Verge 里，运行时注入的 `dns` 也会被客户端合成逻辑覆盖（见根目录 README「为什么覆写必须搭配 Sparkle/mihomo.yaml」）。3.1 起统一改成**纯 YAML 覆写 + 面板内核配置**，老脚本全部退役。
+为什么要归档：这批老文件是**给 Clash Verge 全局扩展脚本用的** —— 靠 JS 在运行时注入 `dns` 段和 `proxy-groups`。Sparkle / Mihomo Party 没有这个机制，而且即便在 Clash Verge 里，运行时注入的 `dns` 也会被客户端合成逻辑覆盖（见根目录 README「为什么覆写必须搭配 Sparkle/mihomo.yaml」）。3.1 起统一改成**纯 YAML 覆写 + 面板内核配置**，老脚本全部退役；3.2 起连规则也全部内联进 `rules`，不再依赖任何远程 `rule-providers`（见根目录 README「四条核心设计」第 4 节）。
 
 ## 文件清单
 
@@ -24,6 +24,6 @@
 
 ## 取用建议
 
-- 想看「3.1 到底改了什么」：拿 `分流+DNS防泄露-3.0.yaml` 和根目录的同名 3.1 版直接 diff，差异集中在 `dns` 段与 `proxy-groups` 的测速 URL。
+- 想看「3.1 到底改了什么」：拿 `分流+DNS防泄露-3.0.yaml` 和根目录现行的 3.2 版直接 diff —— 3.0→3.1 的差异集中在 `dns` 段与 `proxy-groups` 的测速 URL，3.1→3.2 的差异是把 9 个 `rule-providers` 全部内联成 `rules`。
 - 想在 Clash Verge 里继续用 JS 扩展脚本：上面的脚本能跑，但要接受 `doh.pub` / `dns.alidns.com` 直连被投毒的事实（判据：`youtube` 解析到 `69.171.x.x`、`google` 解析到 `185.45.x.x`）。
 - 文件没有扩展名的那几个，内容是 JavaScript，粘贴到 Clash Verge 的「全局扩展脚本」编辑器里即可。
