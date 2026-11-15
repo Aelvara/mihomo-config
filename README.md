@@ -430,6 +430,8 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
   - `🚀 默认代理` 候选列表新增 `⚡ 流媒体测速 [系统]`（排在 `♻️ 自动选择` 之后，一键可切；默认仍留 `♻️ 自动选择`，它 300s 复测比测速组的 600s 恢复更快）
   - `rules` 90 条 → **105 条**，组数 20 → **21**；离线 `mihomo -t` 通过；热加载后实测：spotify / apple-music → `🎵 音乐 [自选]`，speedtest / Windows 更新 → `DIRECT`，github → `Ⓜ️ 微软服务`，DoH 连接 → `♻️ 自动选择`
 
+- **2026-11-15 · 3.6 微调**
+  - `🎵 音乐 [自选]` 整块移到 `💰 币圈专用 [自选]` 之后（`proxy-groups` 顺序即 UI 顺序）；组内候选与 105 条规则不变
 - **2026-11-15 · 3.5**
   - 又拆回两个组：`📱 社媒与流媒体 [自选]` → `🎬 流媒体 [自选]`（31 个视频 GEOSITE）与 `📱 社交平台 [自选]`（18 个社媒 GEOSITE）；`rules` 仍 90 条，组数 19 → 20
   - 新增 `⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 600`、`tolerance: 100`、`lazy: false`），filter 收 高速专线 / 三网推荐 / AWS / 东京 / 新加坡 / 香港 / HK / SG / JP / TW / Taipei，实测 10 个候选，选中 `新加坡1|高速下载|移动优化`（209 ms，同组最慢的 2x专线-新加坡-3 为 997 ms）

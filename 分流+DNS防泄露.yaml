@@ -159,15 +159,6 @@ proxy-groups:
       - DIRECT
 
 
-  - name: "🎵 音乐 [自选]"
-    type: select
-    proxies:
-      - "♻️ 自动选择 [系统]"
-      - "🇯🇵 日本节点 [系统]"
-      - "🇺🇸 美国节点 [系统]"
-      - "🇸🇬 新加坡节点 [系统]"
-      - "🌐 全部节点 [系统]"
-      - DIRECT
   - name: "🎬 流媒体 [自选]"
     type: select
     proxies:
@@ -255,6 +246,15 @@ proxy-groups:
       - "🌐 全部节点 [系统]"
       - DIRECT
 
+  - name: "🎵 音乐 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
   - name: "🖥️ 软件分流 [自选]"
     type: select
     proxies:
