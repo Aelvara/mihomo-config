@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.5）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频站与社交平台各一个组，视频默认走按延迟择优的测速组 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.6）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；测速站 / Windows 更新 / STUN / BT tracker 兜底直连 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -36,7 +36,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 ---
 
-## 五条核心设计
+## 七条核心设计
 
 ### 1. DNS：只用境外 DoH，并且强制走代理
 
@@ -58,6 +58,7 @@ dns:
 - **国内 DoH 直连解析境外域名会被投毒**。实测 `dns.alidns.com` 解析 `www.youtube.com` 返回 `185.45.5.35`（Twitter 的 IP 段），解析 `google.com` 返回 `69.171.235.22`（Facebook 段）。这类答案能 TCP 连通、能握手，但站点是错的 —— 表现出来就是"能上网但全是怪现象"。
 - **订阅模板会塞 fallback 链**（`dns.alidns.com` + `doh.pub` + `cloudflare-dns.com`）。只要 fallback 生效，主 nameserver 拿到的干净答案会被污染答案顶掉。所以直接 `fallback: []`。
 - `respect-rules: true` + 非空 `proxy-server-nameserver` = DoH 请求经代理出口发出，境内投毒到不了。
+- **DoH 上游的出口单独钉死**（3.6 起）：`rules` 前几条写 `IP-CIDR,1.1.1.1/32,♻️ 自动选择 [系统],no-resolve`、`IP-CIDR,8.8.8.8/32,…`、`DOMAIN-SUFFIX,dns.google,♻️ 自动选择 [系统]`。这样即使把 `🚀 默认代理` 切到别的组，DNS 这只脚也不会跟着翻 —— 之前就踩过「默认代理换到 DoH 不通的节点 → 整站 DNS 全崩」。
 
 ### 2. fake-ip：黑名单模式，白名单里绝不放 `*`
 
@@ -198,7 +199,7 @@ fake-ip-filter:
 #### 故意没放进去的
 
 - **BBC iPlayer**（`GEOSITE,bbc`，28 条）—— 需要英国落地 IP，本配置的组里没有英国节点，进来也播不了，还会把 `bbc.com` 新闻一起带走
-- **Spotify / Tidal / Deezer / SoundCloud / Apple Music**（音频）—— 不是视频；Apple Music 归 `🍎 苹果服务`
+- **Spotify / Tidal / Deezer / SoundCloud / Apple Music**（音频）—— 3.6 起独立成 `🎵 音乐 [自选]`，不再塞进视频组
 - **Bilibili / 爱奇艺 / 优酷 / 腾讯视频 / CCTV** —— 国内站，直接命中 `GEOSITE,CN,DIRECT`
 - **Netflix 之外的 Netflix 类**（`primevideo` 里的 `amazon.com` 主站购物域）—— 分类本身不含主站，购物不受影响
 - **Telegram**（`GEOSITE,telegram`，21 条）—— 继续留在独立的 `💬 电报专用 [自选]` 组，它有自己的落地偏好（部分机房 IP 会被 Telegram 风控）
@@ -211,6 +212,35 @@ fake-ip-filter:
 
 ---
 
+
+### 6. 音乐：视频、社交之外的第三个内容组
+
+| 分类 | 记录 | 覆盖 |
+| --- | --- | --- |
+| `spotify` | 28 | Spotify（含 `audio-ak-spotify-com.akamaized.net` 这类 Akamai 音频域） |
+| `apple-music` | 18 | Apple Music |
+| `soundcloud` | 3 | SoundCloud |
+| `tidal` | 3 | TIDAL |
+| `deezer` | 2 | Deezer |
+
+合计 5 个分类、54 条域名，全部指向 `🎵 音乐 [自选]`（默认 `♻️ 自动选择`，候选另有 日 / 美 / 新 / 全部节点 / DIRECT）。
+
+**顺序很关键**：`GEOSITE,apple-music` 必须写在 `GEOSITE,apple` **之前**，否则 Apple Music 先被 `🍎 苹果服务` 吃掉。3.5 的 `apple-tvplus` 同理，也是放在 `apple` 之前的。
+
+### 7. 兜底直连：测速站 / Windows 更新 / STUN / BT tracker
+
+3.6 之前这四类全部落到 `MATCH` → `🚀 默认代理` → 机场出口。代价不显眼，但一直在付：
+
+| 分类 | 记录 | 走代理的后果 | 3.6 起 |
+| --- | --- | --- | --- |
+| `category-speedtest` + `speedtest` | 77 + 14 | 测出来的永远是机场带宽，家宽再快也测不出 | `DIRECT` |
+| `win-update` + `win-extra` | 364 + 355 | Windows 更新一次几百 MB，全算机场流量 | `DIRECT` |
+| `category-stun` | 359 | STUN 走代理会打断 NAT 穿透，语音 / 联机直接哑 | `DIRECT` |
+| `category-public-tracker` | 437 | BT tracker 走机场，易被限速或标记 | `DIRECT` |
+
+这 6 条写在 Steam 下载域名之后、`PROCESS-NAME-WILDCARD` 之前：域名规则先命中，才不会被 `*Steam*` / `*Discord*` 这类进程规则带去 `🖥️ 软件分流`。
+
+---
 
 ## 为什么覆写必须搭配 `Sparkle/mihomo.yaml` 一起用
 
@@ -357,6 +387,9 @@ rules:
 | 每次重启后 `ipv6: false` 丢失、日志刷 `unreachable network` | Sparkle 合成配置时 `deepMerge(订阅, 面板 mihomo.yaml)`，面板里是 `ipv6: true` 就把覆写的 `false` 顶掉，随后 `cleanBooleanConfigs` 因 `true !== false` 把整个顶层 `ipv6` 删掉，内核回落默认 true | 改 `Sparkle/mihomo.yaml` 顶层的 `ipv6: false`（治本），而不是每次手动往合成配置里补 |
 | fake-ip 完全不生效 | `fake-ip-filter` 里有 `*` | 删掉 |
 | 改过组名后，某个组突然不走原来的节点（例如流媒体回落 `♻️ 自动选择`、甚至直连） | Sparkle 按**组名**存选择状态，组名一变旧选择就失效，组回落到第一个候选；空组更会填 `COMPATIBLE`（=DIRECT） | 重载后手动点一次该组出口；改名前先记下当前节点 |
+| 测出来的速度总贴着机场峰值，家宽明明更快 | 测速站自己也走了代理 | 3.6 起 `category-speedtest` / `speedtest` 已 `DIRECT`；自己加的测速域也记得放 `DIRECT` |
+| 语音 / 联机 / BT 全都不通或极慢 | STUN、tracker 走代理，NAT 穿透与 UDP 回包被打断 | 3.6 起 `category-stun` / `category-public-tracker` 已 `DIRECT` |
+| 热加载 `PUT /configs` 后某个 select 组自己换了节点 | select 的选中值不保证保留，会回落到第一个候选 | 想让出口固定，就把它写在该组 `proxies` 的第一位，别靠 UI 点选 |
 | `url-test` 组第一次用总是走一个奇怪的节点 | 默认 `lazy: true`（有流量才测速） | 加 `lazy: false`，启动即测 |
 | 规则集改了 24 小时还不生效 / 某类站点忽然不再分流 | ① jsDelivr 对 `@main` 最长 12h 缓存；② provider 上游删库或改名后，内核拉取失败会继续用 `work/rules/<md5>` 旧缓存，日志刷 `initial provider xxx error`，界面没有任何提示 | 规则内联（3.2 已全部内联）；必须用远程规则就钉 commit，并盯内核日志 |
 
@@ -388,6 +421,14 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 ---
 
 ## 变更记录
+
+- **2026-11-15 · 3.6**
+  - 新增 `🎵 音乐 [自选]`（select，默认 `♻️ 自动选择`），收 `spotify`(28) / `apple-music`(18) / `soundcloud`(3) / `tidal`(3) / `deezer`(2)，共 54 条；`apple-music` 排在 `GEOSITE,apple` 之前
+  - 新增 6 条兜底直连：`category-speedtest`(77) / `speedtest`(14) / `win-update`(364) / `win-extra`(355) / `category-stun`(359) / `category-public-tracker`(437)，共 1074 条，位置在 Steam 域名之后、`PROCESS-NAME-WILDCARD` 之前
+  - `GEOSITE,github` 显式化（原先靠 `microsoft` 分类顺带命中，日志里显示的是 `GeoSite(microsoft)`）
+  - DoH 上游出口钉死：`IP-CIDR,1.1.1.1/32` / `IP-CIDR,8.8.8.8/32` / `DOMAIN-SUFFIX,dns.google` → `♻️ 自动选择 [系统]`，避免默认代理换组时 DNS 跟着崩
+  - `🚀 默认代理` 候选列表新增 `⚡ 流媒体测速 [系统]`（排在 `♻️ 自动选择` 之后，一键可切；默认仍留 `♻️ 自动选择`，它 300s 复测比测速组的 600s 恢复更快）
+  - `rules` 90 条 → **105 条**，组数 20 → **21**；离线 `mihomo -t` 通过；热加载后实测：spotify / apple-music → `🎵 音乐 [自选]`，speedtest / Windows 更新 → `DIRECT`，github → `Ⓜ️ 微软服务`，DoH 连接 → `♻️ 自动选择`
 
 - **2026-11-15 · 3.5**
   - 又拆回两个组：`📱 社媒与流媒体 [自选]` → `🎬 流媒体 [自选]`（31 个视频 GEOSITE）与 `📱 社交平台 [自选]`（18 个社媒 GEOSITE）；`rules` 仍 90 条，组数 19 → 20

@@ -1,5 +1,5 @@
 # ============================================================
-# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.5
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.6
 #
 # 面向 Clash Verge / Mihomo Party / Sparkle
 # 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
@@ -14,6 +14,8 @@
 # 3.3：境外视频站统一并入 🎬 流媒体（30 个 GEOSITE），取消独立「📺 油管专用」组。
 # 3.4：社交平台并入同一组，组名 🎬 流媒体 → 📱 社媒与流媒体（30 视频 + 19 社交分类，共 49 条）。
 # 3.5：又拆成两个组 —— 🎬 流媒体（31 类，默认走 ⚡ 流媒体测速）与 📱 社交平台（18 类，默认美国）；tiktok 归流媒体。
+# 3.6：新增 🎵 音乐 [自选]（spotify / apple-music / soundcloud / tidal / deezer，54 条）；
+#      测速站 / Windows 更新 / STUN / BT tracker 四类兜底直连（1074 条）；DoH 上游出口钉在 ♻️ 自动选择。
 # ============================================================
 
 # ============================================================
@@ -135,6 +137,7 @@ proxy-groups:
     type: select
     proxies:
       - "♻️ 自动选择 [系统]"
+      - "⚡ 流媒体测速 [系统]"
       - "🇭🇰 香港节点 [系统]"
       - "🇯🇵 日本节点 [系统]"
       - "🇸🇬 新加坡节点 [系统]"
@@ -155,6 +158,16 @@ proxy-groups:
       - "🌐 全部节点 [系统]"
       - DIRECT
 
+
+  - name: "🎵 音乐 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
   - name: "🎬 流媒体 [自选]"
     type: select
     proxies:
@@ -384,6 +397,10 @@ rules:
   - "DOMAIN-SUFFIX,ssh.github.com,DIRECT"
   - "DOMAIN-SUFFIX,hltv.org,DIRECT"
   - "DOMAIN-SUFFIX,hltv.com,DIRECT"
+  # ★ DNS 上游固定走 ♻️ 自动选择
+  - "IP-CIDR,1.1.1.1/32,♻️ 自动选择 [系统],no-resolve"
+  - "IP-CIDR,8.8.8.8/32,♻️ 自动选择 [系统],no-resolve"
+  - "DOMAIN-SUFFIX,dns.google,♻️ 自动选择 [系统]"
 
   # Steam 下载与内容服务器直连（原 steam_download provider 的 19 条，已内联）
   - "DOMAIN,steamcdn-a.akamaihd.net,DIRECT"
@@ -405,6 +422,14 @@ rules:
   - "DOMAIN-SUFFIX,st.dl.eccdnx.com,DIRECT"
   - "DOMAIN-SUFFIX,st.dl.pinyuncloud.com,DIRECT"
   - "DOMAIN-SUFFIX,alibaba.cdn.steampipe.steamcontent.com,DIRECT"
+
+  # 兜底直连：测速站 / Windows 更新 / STUN / BT tracker（原先落 MATCH 走机场）
+  - "GEOSITE,category-speedtest,DIRECT"
+  - "GEOSITE,speedtest,DIRECT"
+  - "GEOSITE,win-update,DIRECT"
+  - "GEOSITE,win-extra,DIRECT"
+  - "GEOSITE,category-stun,DIRECT"
+  - "GEOSITE,category-public-tracker,DIRECT"
 
   # 软件进程优先（原 software provider，已内联；PROCESS-NAME-WILDCARD 依赖 find-process-mode: always）
   - "PROCESS-NAME-WILDCARD,*Discord*,🖥️ 软件分流 [自选]"
@@ -482,6 +507,13 @@ rules:
   - "GEOSITE,vk,📱 社交平台 [自选]"   # VK
 
   # Apple（原 apple provider）
+  # 音乐：境外音乐流媒体（5 个 GEOSITE，55 条域名）→ 🎵 音乐 [自选]
+  - "GEOSITE,spotify,🎵 音乐 [自选]"
+  - "GEOSITE,apple-music,🎵 音乐 [自选]"
+  - "GEOSITE,soundcloud,🎵 音乐 [自选]"
+  - "GEOSITE,tidal,🎵 音乐 [自选]"
+  - "GEOSITE,deezer,🎵 音乐 [自选]"
+
   - "GEOSITE,apple,🍎 苹果服务 [自选]"
 
   # Google（原 google provider）
@@ -491,6 +523,7 @@ rules:
   - "GEOSITE,telegram,💬 电报专用 [自选]"
 
   # Microsoft
+  - "GEOSITE,github,Ⓜ️ 微软服务 [自选]"   # GitHub 显式化（原先靠 microsoft 分类顺带命中）
   - "GEOSITE,microsoft,Ⓜ️ 微软服务 [自选]"
 
   # 中国大陆
