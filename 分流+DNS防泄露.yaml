@@ -1,5 +1,5 @@
 # ============================================================
-# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.8
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.9
 #
 # 面向 Clash Verge / Mihomo Party / Sparkle
 # 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
@@ -19,6 +19,8 @@
 # 3.7：国外测速站（fast.com / speedtest.net / ooklaserver.net 等 9 条）→ 🚀 默认代理；国内测速站（speedtest.cn / cnspeedtest.cn）直连。
 # 3.8：进程规则移到 MATCH 之前（只兜无域名的裸流量）；删冗余 GEOSITE,speedtest；补 geolocation-!cn / kaspersky / cline.bot；
 #      GEOIP,CN 去掉 no-resolve（fake-ip 下 no-resolve 会让域名目的地址匹配不上，未收录的国内站被送进隧道）。
+# 3.9：4 条卡巴裸 IP 段 + 4 条证书 OCSP/CRL（digicert/letsencrypt/sectigo/globalsign）直连，
+#      必须排在 GEOSITE,geolocation-!cn 之前（否则被它先吃掉）；IP-ASN 语法可用但实测匹配不生效。
 # ============================================================
 
 # ============================================================
@@ -541,6 +543,18 @@ rules:
 
   # 中国大陆
   # ★ 兜底：非中国归属（27431 条）显式走默认代理，避免落到 MATCH 后再让 GEOIP 解析
+  # 3.9-A：卡巴斯基裸 IP 直连（AS200107 自家段；GEOSITE,kaspersky 只管域名，IP 直连场景需显式）
+  - "IP-CIDR,195.64.114.0/24,DIRECT,no-resolve"    # Kaspersky 更新 CDN（SG）
+  - "IP-CIDR,185.201.3.0/24,DIRECT,no-resolve"     # Kaspersky（UK, Cheltenham）
+  - "IP-CIDR,193.238.132.0/24,DIRECT,no-resolve"   # Kaspersky（RU, Moscow）
+  - "IP-CIDR,79.133.168.0/21,DIRECT,no-resolve"    # Kaspersky RX 段（79.133.169/170 常见）
+
+  # 3.9-C：证书 OCSP/CRL 走直连（TLS 握手链路，走代理既慢又向代理暴露所验证的证书）
+  - "GEOSITE,digicert,DIRECT"
+  - "GEOSITE,letsencrypt,DIRECT"
+  - "GEOSITE,sectigo,DIRECT"
+  - "GEOSITE,globalsign,DIRECT"
+
   - "GEOSITE,geolocation-!cn,🚀 默认代理 [自选]"
   - "GEOSITE,CN,DIRECT"
   - "GEOIP,CN,DIRECT"   # 3.8：去掉 no-resolve —— fake-ip 下 no-resolve 会让域名目的地址永远匹配不上，未收录进 geosite:CN 的国内站会被送进隧道

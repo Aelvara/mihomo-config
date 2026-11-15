@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.8）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；国外测速站走代理、国内测速站直连；Windows 更新 / STUN / BT tracker 兜底直连 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.9）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；国外测速站走代理、国内测速站直连；Windows 更新 / STUN / BT tracker 兜底直连 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -227,7 +227,7 @@ fake-ip-filter:
 
 **顺序很关键**：`GEOSITE,apple-music` 必须写在 `GEOSITE,apple` **之前**，否则 Apple Music 先被 `🍎 苹果服务` 吃掉。3.5 的 `apple-tvplus` 同理，也是放在 `apple` 之前的。
 
-### 7. 兜底直连：测速站 / Windows 更新 / STUN / BT tracker / 杀软更新
+### 7. 兜底直连：测速站 / Windows 更新 / STUN / BT tracker / 杀软更新 / 证书 OCSP / 裸 IP
 
 3.6 之前这四类全部落到 `MATCH` → `🚀 默认代理` → 机场出口。代价不显眼，但一直在付：
 
@@ -240,6 +240,15 @@ fake-ip-filter:
 | `kaspersky`（3.8 新增） | 132 | 特征库 / 大版本更新动辄几百 MB，全算机场流量 | `DIRECT` |
 
 这 6 条写在 Steam 下载域名之后。3.8 起进程规则已挪到 `MATCH` 之前，域名规则天然先命中，不再需要靠顺序抢跑。
+
+#### 证书 OCSP 与裸 IP 直连（3.9）
+
+| 类别 | 3.9 规则 | 为什么必须显式 |
+| --- | --- | --- |
+| 证书 OCSP / CRL | `GEOSITE,digicert`(74) / `letsencrypt`(3) / `sectigo`(21) / `globalsign`(21) → `DIRECT` | 属 TLS 握手链路，走代理既慢又向代理暴露你正在验证哪张证书 |
+| 杀软裸 IP | `IP-CIDR,195.64.114.0/24` / `185.201.3.0/24` / `193.238.132.0/24` / `79.133.168.0/21` → `DIRECT` | 卡巴用 IP 直连更新 CDN 时 `GEOSITE,kaspersky` 覆盖不到，实测这些段全属 AS200107 Kaspersky Lab |
+
+这 8 条**必须排在 `GEOSITE,geolocation-!cn` 之前**（实测放到它后面时，`ocsp.digicert.com` 仍显示 `match GeoSite(geolocation-!cn)`）。`IP-ASN,200107,DIRECT` 看着更优雅，实测语法通过（`/rules` 里是 `IPASN "200107" => DIRECT`）但**匹配不生效**，连接照样落 `MATCH`，只能用 IP-CIDR。
 
 #### 国内外测速站必须分开（3.7）
 
@@ -437,6 +446,13 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.9**
+  - 新增 4 条裸 IP 直连：`IP-CIDR,195.64.114.0/24` / `185.201.3.0/24` / `193.238.132.0/24` / `79.133.168.0/21` → `DIRECT,no-resolve`。实测这些 IP 全属 AS200107 Kaspersky Lab，`GEOSITE,kaspersky` 只管域名，卡巴用裸 IP 连更新 CDN 时仍落 `MATCH` 走机场（改前单日 18 次）
+  - `IP-ASN,200107,DIRECT` **语法通过但匹配不生效**（`/rules` 里能看到 `IPASN "200107" => DIRECT`，实际连接照样 `match Match`），只能用 IP-CIDR；离线 `mihomo -t` 也发现不了这类问题
+  - 新增 4 条证书 OCSP/CRL 直连：`GEOSITE,digicert`(74) / `letsencrypt`(3) / `sectigo`(21) / `globalsign`(21) → `DIRECT`。OCSP 属 TLS 握手链路，走代理既慢又会向代理暴露正在验证哪张证书
+  - **位置前提**：以上 8 条必须排在 `GEOSITE,geolocation-!cn`（27431 条）之前；实测放到它后面时 `ocsp.digicert.com` 仍显示 `match GeoSite(geolocation-!cn)`
+  - `rules` 118 条 → **126 条**；离线 `mihomo -t` 通过；热加载后实测 `195.64.114.59` / `185.201.3.11` → `IPCIDR … DIRECT`，`ocsp.digicert.com` / `ocsp.globalsign.com` / `crt.sectigo.com` / `lencr.org` / `ye2.c.lencr.org` → `GeoSite … DIRECT`；家宽直连卡巴 CDN 实测 connect 19ms
+  - 观察：热加载后残留 `MATCH` 的成分变成广告追踪域（outbrain / liftdsp / bidr.io / script.ac / uuidksinc.net 等），它们不在 `category-ads-all` 里，落 `MATCH` 等于用机场流量刷广告 —— 后续可考虑并入 `🛑 广告拦截`
 - **2026-11-15 · 3.8**
   - 进程规则后移：4 条 `PROCESS-NAME-WILDCARD`（Discord / Steam / EpicGames / WhatsApp）从域名规则之前移到 `MATCH` 之前 —— 原位置会截走这四个进程访问的**所有**域名（含内嵌浏览器打开的 youtube / github），只兜裸 IP 流量才是本意
   - 删除冗余 `GEOSITE,speedtest`（14 条）：源头只有 `include:ookla-speedtest` 一行，已被 `category-speedtest` 完全包含
