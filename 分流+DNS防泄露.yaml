@@ -164,7 +164,6 @@ proxy-groups:
       - "🌐 全部节点 [系统]"
       - DIRECT
 
-
   - name: "🎬 流媒体 [自选]"
     type: select
     proxies:
@@ -261,6 +260,7 @@ proxy-groups:
       - "🇸🇬 新加坡节点 [系统]"
       - "🌐 全部节点 [系统]"
       - DIRECT
+      
   - name: "🖥️ 软件分流 [自选]"
     type: select
     proxies:
@@ -308,6 +308,7 @@ proxy-groups:
     interval: 600
     tolerance: 100
     lazy: false
+    
   - name: "🇭🇰 香港节点 [系统]"
     type: url-test
     include-all-proxies: true
