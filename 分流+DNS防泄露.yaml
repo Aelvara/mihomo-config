@@ -1,5 +1,5 @@
 # ============================================================
-# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.7
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.8
 #
 # 面向 Clash Verge / Mihomo Party / Sparkle
 # 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
@@ -16,6 +16,8 @@
 # 3.5：又拆成两个组 —— 🎬 流媒体（31 类，默认走 ⚡ 流媒体测速）与 📱 社交平台（18 类，默认美国）；tiktok 归流媒体。
 # 3.6：新增 🎵 音乐 [自选]（spotify / apple-music / soundcloud / tidal / deezer，54 条）；
 #      测速站 / Windows 更新 / STUN / BT tracker 四类兜底直连（1074 条）；DoH 上游出口钉在 ♻️ 自动选择。
+# 3.7：国外测速站（fast.com / speedtest.net / ooklaserver.net 等 9 条）→ 🚀 默认代理；国内测速站（speedtest.cn / cnspeedtest.cn）直连。
+# 3.8：进程规则移到 MATCH 之前（只兜无域名的裸流量）；删冗余 GEOSITE,speedtest；补 geolocation-!cn / kaspersky / cline.bot。
 # ============================================================
 
 # ============================================================
@@ -439,17 +441,12 @@ rules:
   - "DOMAIN-SUFFIX,cnspeedtest.cn,DIRECT"   # 测速网备用域
   # 兜底直连：测速站 / Windows 更新 / STUN / BT tracker（原先落 MATCH 走机场）
   - "GEOSITE,category-speedtest,DIRECT"
-  - "GEOSITE,speedtest,DIRECT"
   - "GEOSITE,win-update,DIRECT"
   - "GEOSITE,win-extra,DIRECT"
   - "GEOSITE,category-stun,DIRECT"
   - "GEOSITE,category-public-tracker,DIRECT"
+  - "GEOSITE,kaspersky,DIRECT"   # 卡巴斯基更新/激活（132 条），避免特征库下载走机场流量
 
-  # 软件进程优先（原 software provider，已内联；PROCESS-NAME-WILDCARD 依赖 find-process-mode: always）
-  - "PROCESS-NAME-WILDCARD,*Discord*,🖥️ 软件分流 [自选]"
-  - "PROCESS-NAME-WILDCARD,*Steam*,🖥️ 软件分流 [自选]"
-  - "PROCESS-NAME-WILDCARD,*EpicGames*,🖥️ 软件分流 [自选]"
-  - "PROCESS-NAME-WILDCARD,*WhatsApp*,🖥️ 软件分流 [自选]"
 
   # 私有地址 / 局域网
   - "GEOSITE,private,DIRECT"
@@ -460,6 +457,7 @@ rules:
 
   # AI（原 ai provider）
   - "GEOSITE,category-ai-!cn,🤖 AI服务 [自选]"
+  - "DOMAIN-SUFFIX,cline.bot,🤖 AI服务 [自选]"   # Cline / Claude 编码工具
 
   # 币圈（原 crypto provider：1 条 GEOSITE + 3 条域名）
   - "GEOSITE,category-cryptocurrency,💰 币圈专用 [自选]"
@@ -541,8 +539,17 @@ rules:
   - "GEOSITE,microsoft,Ⓜ️ 微软服务 [自选]"
 
   # 中国大陆
+  # ★ 兜底：非中国归属（27431 条）显式走默认代理，避免落到 MATCH 后再让 GEOIP 解析
+  - "GEOSITE,geolocation-!cn,🚀 默认代理 [自选]"
   - "GEOSITE,CN,DIRECT"
   - "GEOIP,CN,DIRECT,no-resolve"
 
   # 其他流量
+  # 软件进程兜底（原先排在域名规则之前，会截走这些进程访问的所有域名；放到 MATCH 之前只兜无域名的裸流量）
+  # 前提：find-process-mode: always
+  - "PROCESS-NAME-WILDCARD,*Discord*,🖥️ 软件分流 [自选]"
+  - "PROCESS-NAME-WILDCARD,*Steam*,🖥️ 软件分流 [自选]"
+  - "PROCESS-NAME-WILDCARD,*EpicGames*,🖥️ 软件分流 [自选]"
+  - "PROCESS-NAME-WILDCARD,*WhatsApp*,🖥️ 软件分流 [自选]"
+  # 想让 Steam / Discord 客户端整体固定走某组时，把上面 4 条移回域名规则之前并给 🖥️ 软件分流 指定具体组
   - "MATCH,🚀 默认代理 [自选]"

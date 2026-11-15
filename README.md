@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.7）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；国外测速站走代理、国内测速站直连；Windows 更新 / STUN / BT tracker 兜底直连 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.8）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；国外测速站走代理、国内测速站直连；Windows 更新 / STUN / BT tracker 兜底直连 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -174,7 +174,7 @@ fake-ip-filter:
 | `imgur` / `4chan` / `bluesky` / `clubhouse` | 各 3 | Imgur / 4chan / Bluesky（`bsky.app`）/ Clubhouse |
 | `tumblr` | 1 | Tumblr（本地 geosite 只给了 `tumblr.com` 一条） |
 
-合计 **849 条记录**。桌面客户端不受影响：`PROCESS-NAME-WILDCARD,*Discord*` / `*WhatsApp*` 排在 GEOSITE 之前，客户端进程仍走 `🖥️ 软件分流 [自选]`，只有网页版进这一组。
+合计 **849 条记录**。3.8 起 `PROCESS-NAME-WILDCARD,*Discord*` / `*Steam*` / `*EpicGames*` / `*WhatsApp*` 已移到 `MATCH` 之前 —— 域名规则一律先判，这四个进程只兜住没有域名的裸 IP 流量（放在域名规则之前时，Discord / Steam 内嵌浏览器打开的 youtube、github 会被一并拽去 `🖥️ 软件分流`）。
 
 #### 测速组实测成员与延迟
 
@@ -227,18 +227,19 @@ fake-ip-filter:
 
 **顺序很关键**：`GEOSITE,apple-music` 必须写在 `GEOSITE,apple` **之前**，否则 Apple Music 先被 `🍎 苹果服务` 吃掉。3.5 的 `apple-tvplus` 同理，也是放在 `apple` 之前的。
 
-### 7. 兜底直连：测速站 / Windows 更新 / STUN / BT tracker
+### 7. 兜底直连：测速站 / Windows 更新 / STUN / BT tracker / 杀软更新
 
 3.6 之前这四类全部落到 `MATCH` → `🚀 默认代理` → 机场出口。代价不显眼，但一直在付：
 
 | 分类 | 记录 | 走代理的后果 | 3.6 起 |
 | --- | --- | --- | --- |
-| `category-speedtest` + `speedtest` | 77 + 14 | 测出来的永远是机场带宽，家宽再快也测不出 | `DIRECT` |
+| `category-speedtest`（内含 `include:ookla-speedtest`） | 77 | 测出来的永远是机场带宽，家宽再快也测不出 | `DIRECT` |
 | `win-update` + `win-extra` | 364 + 355 | Windows 更新一次几百 MB，全算机场流量 | `DIRECT` |
 | `category-stun` | 359 | STUN 走代理会打断 NAT 穿透，语音 / 联机直接哑 | `DIRECT` |
 | `category-public-tracker` | 437 | BT tracker 走机场，易被限速或标记 | `DIRECT` |
+| `kaspersky`（3.8 新增） | 132 | 特征库 / 大版本更新动辄几百 MB，全算机场流量 | `DIRECT` |
 
-这 6 条写在 Steam 下载域名之后、`PROCESS-NAME-WILDCARD` 之前：域名规则先命中，才不会被 `*Steam*` / `*Discord*` 这类进程规则带去 `🖥️ 软件分流`。
+这 6 条写在 Steam 下载域名之后。3.8 起进程规则已挪到 `MATCH` 之前，域名规则天然先命中，不再需要靠顺序抢跑。
 
 #### 国内外测速站必须分开（3.7）
 
@@ -251,7 +252,7 @@ fake-ip-filter:
 
 `api.fast.com` 被 `DOMAIN-SUFFIX,fast.com` 覆盖；`ooklaserver.net` 是 Ookla 各节点测速服务器的统一后缀，走代理后服务器列表会按代理落地就近选（实测落到新加坡 / 印尼节点），测出来的就是该节点的带宽。想横向比节点，把 `🚀 默认代理` 临时切到目标组再测一次即可。
 
-`category-speedtest`（77 条）和 `speedtest`（14 条）仍整体 `DIRECT`，作用是兜住国内长尾测速站（各省运营商、宽带厂商自建测速页）；代价是其中少量国外域名也会直连，想彻底干净就删掉这两条，只留上面 9 条代理规则。
+`category-speedtest`（77 条，源头本身已 `include:ookla-speedtest`，3.8 删掉了重复的 `GEOSITE,speedtest`）仍整体 `DIRECT`，作用是兜住国内长尾测速站（各省运营商、宽带厂商自建测速页）；代价是其中少量国外域名也会直连，想彻底干净就删掉这条 `GEOSITE,category-speedtest`，只留上面 11 条域名级规则（9 条国外走代理 + 2 条国内直连）。
 
 
 ---
@@ -436,6 +437,14 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.8**
+  - 进程规则后移：4 条 `PROCESS-NAME-WILDCARD`（Discord / Steam / EpicGames / WhatsApp）从域名规则之前移到 `MATCH` 之前 —— 原位置会截走这四个进程访问的**所有**域名（含内嵌浏览器打开的 youtube / github），只兜裸 IP 流量才是本意
+  - 删除冗余 `GEOSITE,speedtest`（14 条）：源头只有 `include:ookla-speedtest` 一行，已被 `category-speedtest` 完全包含
+  - 新增 `GEOSITE,geolocation-!cn`（27431 条）→ `🚀 默认代理`，位置在各类内容组之后、`GEOSITE,CN` 之前，语义显式化
+  - 新增 `GEOSITE,kaspersky`（132 条）→ `DIRECT`（实测 `p13.upd3.kaspersky.com` 原先落 `MATCH` 走机场）
+  - 新增 `DOMAIN-SUFFIX,cline.bot` → `🤖 AI服务`（实测 `api.cline.bot` 原先落 `MATCH`）
+  - `rules` 116 条 → **118 条**；离线 `mihomo -t` 通过；热加载后日志实测：`p13.upd3.kaspersky.com` → `GeoSite(kaspersky) DIRECT`、`api.cline.bot` → `DomainSuffix/cline.bot 🤖 AI服务`、`linux.do` / `www.yahoo.com` → `GeoSite(geolocation-!cn) 🚀 默认代理`
+  - 已知限制：`GEOIP,CN,DIRECT,no-resolve` 在 fake-ip 下对域名目的地址不生效（只对裸 IP 生效），未收录进 `geosite:CN` 的国内站会落到 `MATCH` 走代理（例：`codexfree.xiaotuxp.com`）
 - **2026-11-15 · 3.7**
   - 测速站按地理拆分：9 条国外测速站（`fast.com` / `speedtest.net` / `ooklaserver.net` / `librespeed.org` / `nperf.com` / `openspeedtest.com` / `speedof.me` / `testmy.net` / `speed.cloudflare.com`）→ `🚀 默认代理`，2 条国内测速站（`speedtest.cn` / `cnspeedtest.cn`）→ `DIRECT`
   - 动因：直连 fast.com 实测首字节 3.5s、Ookla 选到越南节点——直连测的是家宽国际出口，与日常代理路径无关
