@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.4）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频站与境外社交平台合并进一个组 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.5）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频站与社交平台各一个组，视频默认走按延迟择优的测速组 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -105,15 +105,21 @@ fake-ip-filter:
 
 > 真要恢复远程规则：把 `rule-providers` 段加回来、`rules` 里改回 `RULE-SET,<provider>,<策略>`。但**别用 `@main`**，钉 commit：`https://cdn.jsdelivr.net/gh/<owner>/<repo>@<sha>/rules/xxx.yaml`。jsDelivr 对 `@main` 最长 12 小时缓存，改了不生效极容易被误判成「覆写没合并」。
 
-### 5. 「社媒与流媒体」组合并了什么：49 个 GEOSITE，1643 条记录
+### 5. 流媒体与社交平台：拆成两个组，31 + 18 个 GEOSITE，1643 条记录
 
-3.3 起取消独立的「📺 油管专用」组；**3.4 起组名由 `🎬 流媒体 [自选]` 改为 `📱 社媒与流媒体 [自选]`**，境外视频站与境外主流社交平台合并进同一组，共 49 条规则（30 视频 + 19 社交）。组本身只选出口，真正决定「谁能进来」的是这 49 条 `GEOSITE`。
+演进过程：3.3 取消独立的「📺 油管专用」组 → 3.4 曾把社媒与视频站**合并**成 `📱 社媒与流媒体 [自选]` → **3.5 起又拆回两个组**，因为两者的出口诉求本来就不一样。
 
-**为什么不再叫「流媒体」**：3.3 的时候组里其实只有视频站，Instagram / X / Reddit / Discord 这类社交平台全落在最后的 `MATCH`（实测一天 38 条 Instagram 连接全是 `match Match`），名字和实际内容对不上，看名字也猜不到 IG 走哪。合并后一半成员是社交平台，继续叫「流媒体」会误导。
+| 组 | 类型 | 收谁 | 默认出口 |
+| --- | --- | --- | --- |
+| `⚡ 流媒体测速 [系统]` | url-test | 当前订阅里名字含 高速专线 / 三网推荐 / AWS / 东京 / 新加坡 / 香港 / HK / SG / JP / TW / Taipei 的节点（实测 10 个） | 按 `gstatic.com/generate_204` 延迟择优 |
+| `🎬 流媒体 [自选]` | select | **31 个视频 GEOSITE**（含 tiktok） | 指向 `⚡ 流媒体测速` |
+| `📱 社交平台 [自选]` | select | **18 个社媒 GEOSITE** | `🇺🇸 美国节点 [系统]` |
 
-**为什么不拆成两个组**：两者的出口诉求一致 —— 都要固定一个境外落地，避免 `♻️ 自动选择` 漂移导致社交账号被 CF/风控重新验证、视频站跳出地区锁。拆开只是多一个要手动维护的选择器，没有任何收益。
+**为什么拆**：视频要的是带宽和延迟 —— 同一个订阅下实测 `♻️ 自动选择` 196ms（新加坡）、`🇯🇵 日本` 387ms、`🇺🇸 美国` **1820ms**，用美国落地拉 4K 会明显变慢；社交要的是**落地稳定**，账号地区不能来回漂，否则容易触发二次验证。3.4 的「一个组一个出口」只能二选一，3.5 让两者各走各的。
 
-#### 视频侧（30 个分类，757 条）
+**为什么测速组单独建，不直接用 `♻️ 自动选择`**：`♻️ 自动选择` 的探测地址是 `https://1.1.1.1/dns-query`（3.0 起为了让 DNS 有可用上游而改的），量的是「DoH 通不通」，完全不代表带宽。测速组用 `gstatic.com/generate_204` 单独量延迟。代价是多一个组要维护。
+
+#### 视频侧（31 个分类，794 条）
 
 | 分类 | 记录 | 覆盖 |
 | --- | --- | --- |
@@ -121,6 +127,7 @@ fake-ip-filter:
 | `youtube` | 178 | YouTube 全站（含 `googlevideo` 以外的 ytimg / yt3 等） |
 | `hbo` | 65 | HBO Max（`max.com`、`hbomax.com`、`hbo.com`） |
 | `hulu` | 48 | Hulu（与 disney 分类有重叠，主站/日本站） |
+| `tiktok` | 37 | TikTok（`tiktokv` / `ttwstatic` / 各地 `tiktokcdn`）—— 3.5 从社媒侧移入 |
 | `twitch` | 34 | Twitch（含 `ttvnw.net`、`live-video.net` 播放域） |
 | `netflix` | 28 | Netflix（`nflxvideo` / `nflxso` / `fast.com` + aws apiproxy 正则） |
 | `primevideo` | 23 | Prime Video（含 amazon 图片 CDN） |
@@ -140,9 +147,11 @@ fake-ip-filter:
 | `mubi` / `streamable` / `plutotv` / `rumble` / `7tv` | 各 2 | 小众点播与直播站 |
 | `mytvsuper` / `kick` | 各 1 | myTV SUPER（港）/ Kick |
 
-合计 **757 条记录**（`disney` 与 `hulu` 有重叠，实际域名数略少）。规则顺序在 `GEOSITE,apple` 之前，所以 `apple-tvplus` 不会被苹果组抢走。
+合计 **794 条记录**（`disney` 与 `hulu` 有重叠，实际域名数略少）。规则顺序在 `GEOSITE,apple` 之前，所以 `apple-tvplus` 不会被苹果组抢走。
 
-#### 社交侧（19 个分类，886 条，3.4 新增）
+> TikTok 归视频侧而不是社媒侧：它的主要负载是视频流，选最快落地比"地区稳定"更重要。
+
+#### 社交侧（18 个分类，849 条）
 
 | 分类 | 记录 | 覆盖 |
 | --- | --- | --- |
@@ -150,7 +159,6 @@ fake-ip-filter:
 | `kakao` | 57 | KakaoTalk / Daum |
 | `pinterest` | 52 | Pinterest（含 `pinimg` 图片 CDN） |
 | `vk` | 52 | VK（俄） |
-| `tiktok` | 37 | TikTok（`tiktokv` / `ttwstatic` / 各地 `tiktokcdn`） |
 | `discord` | 28 | Discord 网页版（`discord.gg` / `discord.media` / 附件上传桶） |
 | `twitter` | 24 | X / Twitter（`x.com`、`t.co`、`twimg`、`pscp.tv`） |
 | `line` | 20 | LINE |
@@ -163,9 +171,29 @@ fake-ip-filter:
 | `imgur` / `4chan` / `bluesky` / `clubhouse` | 各 3 | Imgur / 4chan / Bluesky（`bsky.app`）/ Clubhouse |
 | `tumblr` | 1 | Tumblr（本地 geosite 只给了 `tumblr.com` 一条） |
 
-桌面客户端不受影响：`PROCESS-NAME-WILDCARD,*Discord*` / `*WhatsApp*` 排在 GEOSITE 之前，客户端进程仍走 `🖥️ 软件分流 [自选]`，只有网页版进这一组。
+合计 **849 条记录**。桌面客户端不受影响：`PROCESS-NAME-WILDCARD,*Discord*` / `*WhatsApp*` 排在 GEOSITE 之前，客户端进程仍走 `🖥️ 软件分流 [自选]`，只有网页版进这一组。
 
-**故意没放进去的：**
+#### 测速组实测成员与延迟
+
+`⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 300`、`tolerance: 100`、`lazy: false`）在某三毛机场订阅下的实测结果：
+
+| 节点 | 延迟 |
+| --- | --- |
+| 新加坡1\|高速下载\|移动优化 | **209 ms** ← 被选中 |
+| 新加坡2\|高速下载\|移动优化 | 512 ms |
+| 2x专线-香港-2 | 752 ms |
+| 2x专线-新加坡-2 | 786 ms |
+| 2x专线-香港-1 | 809 ms |
+| 2x专线-香港-3 | 821 ms |
+| 2x专线-新加坡-1 | 951 ms |
+| 2x专线-新加坡-3 | 997 ms |
+| 2x专线-新加坡-4 (IPv6) / 2x专线-香港-4 (IPv6) | 0（探测超时，不参与择优） |
+
+`lazy: false` 是关键：默认的 `lazy: true` 只在有流量走进该组时才测速，第一次播放视频会先用一个随机初始节点。关掉后启动即测。
+
+> 延迟 ≠ 带宽。测速组只做粗筛（挑出「能连通且延迟低」的 1 个），真正的带宽差异要靠实际播放感知。想要更准可以给组加 `expected: "200"`，或换成一个较大的测速文件 URL。
+
+#### 故意没放进去的
 
 - **BBC iPlayer**（`GEOSITE,bbc`，28 条）—— 需要英国落地 IP，本配置的组里没有英国节点，进来也播不了，还会把 `bbc.com` 新闻一起带走
 - **Spotify / Tidal / Deezer / SoundCloud / Apple Music**（音频）—— 不是视频；Apple Music 归 `🍎 苹果服务`
@@ -176,7 +204,8 @@ fake-ip-filter:
 - **微信 / 微博 / 小红书 / 抖音** —— 国内站，命中 `GEOSITE,CN,DIRECT`，本就不出境
 - **`mastodon` / `9gag`** —— 本地 `geosite.dat` 里没有这两个分类，写进去会 `Parse config error` 直接起不来（实测已确认不存在）
 
-> 想加别的站：`GEOSITE,<小写分类名>,📱 社媒与流媒体 [自选]`，分类名必须是本地 `geosite.dat` 里真实存在的（`strings work/geosite.dat | grep ...` 或解 protobuf 都行），写错会 `Parse config error` 直接起不来。
+> 想加别的站：写 `GEOSITE,<小写分类名>,🎬 流媒体 [自选]` 或 `GEOSITE,<小写分类名>,📱 社交平台 [自选]`。分类名必须是本地 `geosite.dat` 里真实存在的（`strings work/geosite.dat | grep ...` 或解 protobuf 都行），写错会 `Parse config error` 直接起不来。
+
 
 ---
 
@@ -325,6 +354,8 @@ rules:
 | Sparkle 面板 DNS 卡片三条输入框报红：参数不合法 | Sparkle 前端校验器只允许字母/数字/中文/空格/`-`/`_`，不允许 emoji 和方括号，所以 `https://1.1.1.1/dns-query#🚀 默认代理 [自选]` 必红 | 去掉 `#策略名` 后缀，改成靠 `respect-rules` 让 DNS 走规则（效果等价，日志里能看到 DoH 连接走代理组） |
 | 每次重启后 `ipv6: false` 丢失、日志刷 `unreachable network` | Sparkle 合成配置时 `deepMerge(订阅, 面板 mihomo.yaml)`，面板里是 `ipv6: true` 就把覆写的 `false` 顶掉，随后 `cleanBooleanConfigs` 因 `true !== false` 把整个顶层 `ipv6` 删掉，内核回落默认 true | 改 `Sparkle/mihomo.yaml` 顶层的 `ipv6: false`（治本），而不是每次手动往合成配置里补 |
 | fake-ip 完全不生效 | `fake-ip-filter` 里有 `*` | 删掉 |
+| 改过组名后，某个组突然不走原来的节点（例如流媒体回落 `♻️ 自动选择`、甚至直连） | Sparkle 按**组名**存选择状态，组名一变旧选择就失效，组回落到第一个候选；空组更会填 `COMPATIBLE`（=DIRECT） | 重载后手动点一次该组出口；改名前先记下当前节点 |
+| `url-test` 组第一次用总是走一个奇怪的节点 | 默认 `lazy: true`（有流量才测速） | 加 `lazy: false`，启动即测 |
 | 规则集改了 24 小时还不生效 / 某类站点忽然不再分流 | ① jsDelivr 对 `@main` 最长 12h 缓存；② provider 上游删库或改名后，内核拉取失败会继续用 `work/rules/<md5>` 旧缓存，日志刷 `initial provider xxx error`，界面没有任何提示 | 规则内联（3.2 已全部内联）；必须用远程规则就钉 commit，并盯内核日志 |
 
 ---
@@ -356,6 +387,12 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.5**
+  - 又拆回两个组：`📱 社媒与流媒体 [自选]` → `🎬 流媒体 [自选]`（31 个视频 GEOSITE）与 `📱 社交平台 [自选]`（18 个社媒 GEOSITE）；`rules` 仍 90 条，组数 19 → 20
+  - 新增 `⚡ 流媒体测速 [系统]`（`type: url-test`、`url: https://www.gstatic.com/generate_204`、`interval: 300`、`tolerance: 100`、`lazy: false`），filter 收 高速专线 / 三网推荐 / AWS / 东京 / 新加坡 / 香港 / HK / SG / JP / TW / Taipei，实测 10 个候选，选中 `新加坡1|高速下载|移动优化`（209 ms，同组最慢的 2x专线-新加坡-3 为 997 ms）
+  - `🎬 流媒体` 默认指向 `⚡ 流媒体测速`；`📱 社交平台` 默认 `🇺🇸 美国节点 [系统]`（美国-HY2-55，201 ms）
+  - `GEOSITE,tiktok` 从社媒侧移到视频侧（TikTok 主要负载是视频流）；Pinterest / Imgur 留在社媒侧不动
+  - 实测：浏览器打开 youtube / netflix / tiktok / twitch 全部走 `🎬 流媒体 [自选][新加坡1|高速下载|移动优化]`，instagram / x.com / pinterest 全部走 `📱 社交平台 [自选][美国-HY2-55]`，重载后落回 `MATCH` 的媒体/社媒域名 0 条
 - **2026-11-15 · 3.4**
   - 组名 `🎬 流媒体 [自选]` → **`📱 社媒与流媒体 [自选]`**，境外主流社交平台并入同一组；`rules` 71 条 → **90 条**（组数仍 19）
   - 并入 19 个社交分类：`meta`(555) / `kakao`(57) / `pinterest`(52) / `vk`(52) / `tiktok`(37) / `discord`(28) / `twitter`(24) / `line`(20) / `reddit`(12) / `linkedin`(12) / `snap`(9) / `signal`(8) / `quora`(6) / `messenger`(4) / `imgur`·`4chan`·`bluesky`·`clubhouse`(各 3) / `tumblr`(1)，共 886 条记录
