@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.2）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.3）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -36,7 +36,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 ---
 
-## 四条核心设计
+## 五条核心设计
 
 ### 1. DNS：只用境外 DoH，并且强制走代理
 
@@ -105,7 +105,48 @@ fake-ip-filter:
 
 > 真要恢复远程规则：把 `rule-providers` 段加回来、`rules` 里改回 `RULE-SET,<provider>,<策略>`。但**别用 `@main`**，钉 commit：`https://cdn.jsdelivr.net/gh/<owner>/<repo>@<sha>/rules/xxx.yaml`。jsDelivr 对 `@main` 最长 12 小时缓存，改了不生效极容易被误判成「覆写没合并」。
 
+### 5. 流媒体组覆盖什么：30 个 GEOSITE，757 条记录
+
+3.3 起不再有单独的「油管专用」组，**所有境外视频站统一进 `🎬 流媒体 [自选]`**。组本身只选出口，真正决定「谁能进来」的是这 30 条规则：
+
+| 分类 | 记录 | 覆盖 |
+| --- | --- | --- |
+| `disney` | 225 | Disney+ / Hulu / Star-Hotstar / ESPN / Marvel / Pixar / Lucasfilm / NatGeo / FX / ABC / 20th Century |
+| `youtube` | 178 | YouTube 全站（含 `googlevideo` 以外的 ytimg / yt3 等） |
+| `hbo` | 65 | HBO Max（`max.com`、`hbomax.com`、`hbo.com`） |
+| `hulu` | 48 | Hulu（与 disney 分类有重叠，主站/日本站） |
+| `twitch` | 34 | Twitch（含 `ttvnw.net`、`live-video.net` 播放域） |
+| `netflix` | 28 | Netflix（`nflxvideo` / `nflxso` / `fast.com` + aws apiproxy 正则） |
+| `primevideo` | 23 | Prime Video（含 amazon 图片 CDN） |
+| `abema` | 21 | ABEMA（日） |
+| `hamivideo` | 19 | Hami Video（台） |
+| `vimeo` | 17 | Vimeo |
+| `tvb` | 14 | TVB（港） |
+| `litv` | 11 | LiTV（台） |
+| `niconico` | 10 | niconico（日） |
+| `apple-tvplus` | 8 | Apple TV+（只截流媒体，不影响 `🍎 苹果服务`） |
+| `dazn` | 8 | DAZN |
+| `viu` | 7 | Viu（港/新/东南亚） |
+| `roku` | 6 | Roku |
+| `tver` / `sling` | 5 / 5 | TVer（日）/ Sling TV |
+| `plex` | 4 | Plex |
+| `dailymotion` / `kktv` / `ftv` | 3 / 3 / 3 | Dailymotion / KKTV（台）/ 民视（台） |
+| `mubi` / `streamable` / `plutotv` / `rumble` / `7tv` | 各 2 | 小众点播与直播站 |
+| `mytvsuper` / `kick` | 各 1 | myTV SUPER（港）/ Kick |
+
+合计 **757 条记录**（`disney` 与 `hulu` 有重叠，实际域名数略少）。规则顺序在 `GEOSITE,apple` 之前，所以 `apple-tvplus` 不会被苹果组抢走。
+
+**故意没放进去的：**
+
+- **BBC iPlayer**（`GEOSITE,bbc`，28 条）—— 需要英国落地 IP，本配置的组里没有英国节点，进来也播不了，还会把 `bbc.com` 新闻一起带走
+- **Spotify / Tidal / Deezer / SoundCloud / Apple Music**（音频）—— 不是视频；Apple Music 归 `🍎 苹果服务`
+- **Bilibili / 爱奇艺 / 优酷 / 腾讯视频 / CCTV** —— 国内站，直接命中 `GEOSITE,CN,DIRECT`
+- **Netflix 之外的 Netflix 类**（`primevideo` 里的 `amazon.com` 主站购物域）—— 分类本身不含主站，购物不受影响
+
+> 想加别的站：`GEOSITE,<小写分类名>,🎬 流媒体 [自选]`，分类名必须是本地 `geosite.dat` 里真实存在的（`strings work/geosite.dat | grep ...` 或解 protobuf 都行），写错会 `Parse config error` 直接起不来。
+
 ---
+
 
 ## 为什么覆写必须搭配 `Sparkle/mihomo.yaml` 一起用
 
@@ -282,6 +323,11 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.3**
+  - `rules` 44 条 → 71 条：`🎬 流媒体` 由 netflix/disney 两条扩为 **30 个境外视频 GEOSITE**（hbo / hulu / primevideo / youtube / twitch / apple-tvplus / dazn / viu / abema / niconico / tver / tvb / mytvsuper / hamivideo / kktv / litv / ftv / vimeo / dailymotion / plex / mubi / streamable / roku / sling / plutotv / kick / rumble / 7tv），共 757 条记录
+  - 删除独立的 `📺 油管专用 [自选]` 组，YouTube 并入流媒体组（组数 20 → 19）
+  - 媒体规则位于 `GEOSITE,apple` 之前，避免 `apple-tvplus` 被苹果组截走
+  - 实测日志：`twitch` / `youtube` / `hbo`（max.com）/ `primevideo` / `viu` / `abema` 全部命中 `🎬 流媒体 [自选]`，无一条落回 `MATCH`
 - **2026-11-15 · 3.2**
   - 删除全部 9 个 `rule-providers`，规则内联进 `rules`（20 条 → 44 条直写规则，0 条 `RULE-SET`）
   - 6 个 GEOSITE 包装型 provider 还原为原生 `GEOSITE,xxx,<策略>`（`category-ads-all` / `category-ai-!cn` / `youtube` / `category-cryptocurrency` / `disney` / `apple` / `google`）
