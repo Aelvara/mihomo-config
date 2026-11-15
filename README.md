@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.3）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.4）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频站与境外社交平台合并进一个组 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -105,9 +105,15 @@ fake-ip-filter:
 
 > 真要恢复远程规则：把 `rule-providers` 段加回来、`rules` 里改回 `RULE-SET,<provider>,<策略>`。但**别用 `@main`**，钉 commit：`https://cdn.jsdelivr.net/gh/<owner>/<repo>@<sha>/rules/xxx.yaml`。jsDelivr 对 `@main` 最长 12 小时缓存，改了不生效极容易被误判成「覆写没合并」。
 
-### 5. 流媒体组覆盖什么：30 个 GEOSITE，757 条记录
+### 5. 「社媒与流媒体」组合并了什么：49 个 GEOSITE，1643 条记录
 
-3.3 起不再有单独的「油管专用」组，**所有境外视频站统一进 `🎬 流媒体 [自选]`**。组本身只选出口，真正决定「谁能进来」的是这 30 条规则：
+3.3 起取消独立的「📺 油管专用」组；**3.4 起组名由 `🎬 流媒体 [自选]` 改为 `📱 社媒与流媒体 [自选]`**，境外视频站与境外主流社交平台合并进同一组，共 49 条规则（30 视频 + 19 社交）。组本身只选出口，真正决定「谁能进来」的是这 49 条 `GEOSITE`。
+
+**为什么不再叫「流媒体」**：3.3 的时候组里其实只有视频站，Instagram / X / Reddit / Discord 这类社交平台全落在最后的 `MATCH`（实测一天 38 条 Instagram 连接全是 `match Match`），名字和实际内容对不上，看名字也猜不到 IG 走哪。合并后一半成员是社交平台，继续叫「流媒体」会误导。
+
+**为什么不拆成两个组**：两者的出口诉求一致 —— 都要固定一个境外落地，避免 `♻️ 自动选择` 漂移导致社交账号被 CF/风控重新验证、视频站跳出地区锁。拆开只是多一个要手动维护的选择器，没有任何收益。
+
+#### 视频侧（30 个分类，757 条）
 
 | 分类 | 记录 | 覆盖 |
 | --- | --- | --- |
@@ -136,14 +142,41 @@ fake-ip-filter:
 
 合计 **757 条记录**（`disney` 与 `hulu` 有重叠，实际域名数略少）。规则顺序在 `GEOSITE,apple` 之前，所以 `apple-tvplus` 不会被苹果组抢走。
 
+#### 社交侧（19 个分类，886 条，3.4 新增）
+
+| 分类 | 记录 | 覆盖 |
+| --- | --- | --- |
+| `meta` | 555 | Facebook / Instagram / Threads / WhatsApp 网页版（含 `cdninstagram`、`fbcdn` 静态域） |
+| `kakao` | 57 | KakaoTalk / Daum |
+| `pinterest` | 52 | Pinterest（含 `pinimg` 图片 CDN） |
+| `vk` | 52 | VK（俄） |
+| `tiktok` | 37 | TikTok（`tiktokv` / `ttwstatic` / 各地 `tiktokcdn`） |
+| `discord` | 28 | Discord 网页版（`discord.gg` / `discord.media` / 附件上传桶） |
+| `twitter` | 24 | X / Twitter（`x.com`、`t.co`、`twimg`、`pscp.tv`） |
+| `line` | 20 | LINE |
+| `reddit` | 12 | Reddit（`redd.it` / `redditmedia` / `redditstatic`） |
+| `linkedin` | 12 | LinkedIn（含 `licdn` / `lnkd.in`） |
+| `snap` | 9 | Snapchat（`sc-cdn` / `snapchat.com`） |
+| `signal` | 8 | Signal |
+| `quora` | 6 | Quora（其中 `poe.com` 已被前面的 AI 规则先命中，不会重复） |
+| `messenger` | 4 | Facebook Messenger（`messenger.com` / `m.me`） |
+| `imgur` / `4chan` / `bluesky` / `clubhouse` | 各 3 | Imgur / 4chan / Bluesky（`bsky.app`）/ Clubhouse |
+| `tumblr` | 1 | Tumblr（本地 geosite 只给了 `tumblr.com` 一条） |
+
+桌面客户端不受影响：`PROCESS-NAME-WILDCARD,*Discord*` / `*WhatsApp*` 排在 GEOSITE 之前，客户端进程仍走 `🖥️ 软件分流 [自选]`，只有网页版进这一组。
+
 **故意没放进去的：**
 
 - **BBC iPlayer**（`GEOSITE,bbc`，28 条）—— 需要英国落地 IP，本配置的组里没有英国节点，进来也播不了，还会把 `bbc.com` 新闻一起带走
 - **Spotify / Tidal / Deezer / SoundCloud / Apple Music**（音频）—— 不是视频；Apple Music 归 `🍎 苹果服务`
 - **Bilibili / 爱奇艺 / 优酷 / 腾讯视频 / CCTV** —— 国内站，直接命中 `GEOSITE,CN,DIRECT`
 - **Netflix 之外的 Netflix 类**（`primevideo` 里的 `amazon.com` 主站购物域）—— 分类本身不含主站，购物不受影响
+- **Telegram**（`GEOSITE,telegram`，21 条）—— 继续留在独立的 `💬 电报专用 [自选]` 组，它有自己的落地偏好（部分机房 IP 会被 Telegram 风控）
+- **`bytedance`**（955 条）—— 是 TikTok + 抖音 + 今日头条 + 番茄小说等国内 App 的超集，并进来会把国内应用一起推出境
+- **微信 / 微博 / 小红书 / 抖音** —— 国内站，命中 `GEOSITE,CN,DIRECT`，本就不出境
+- **`mastodon` / `9gag`** —— 本地 `geosite.dat` 里没有这两个分类，写进去会 `Parse config error` 直接起不来（实测已确认不存在）
 
-> 想加别的站：`GEOSITE,<小写分类名>,🎬 流媒体 [自选]`，分类名必须是本地 `geosite.dat` 里真实存在的（`strings work/geosite.dat | grep ...` 或解 protobuf 都行），写错会 `Parse config error` 直接起不来。
+> 想加别的站：`GEOSITE,<小写分类名>,📱 社媒与流媒体 [自选]`，分类名必须是本地 `geosite.dat` 里真实存在的（`strings work/geosite.dat | grep ...` 或解 protobuf 都行），写错会 `Parse config error` 直接起不来。
 
 ---
 
@@ -323,6 +356,12 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.4**
+  - 组名 `🎬 流媒体 [自选]` → **`📱 社媒与流媒体 [自选]`**，境外主流社交平台并入同一组；`rules` 71 条 → **90 条**（组数仍 19）
+  - 并入 19 个社交分类：`meta`(555) / `kakao`(57) / `pinterest`(52) / `vk`(52) / `tiktok`(37) / `discord`(28) / `twitter`(24) / `line`(20) / `reddit`(12) / `linkedin`(12) / `snap`(9) / `signal`(8) / `quora`(6) / `messenger`(4) / `imgur`·`4chan`·`bluesky`·`clubhouse`(各 3) / `tumblr`(1)，共 886 条记录
+  - 保留独立组：`GEOSITE,telegram` → `💬 电报专用 [自选]`；排除 `bytedance`（955 条，含抖音/今日头条等国内 App）
+  - 改名副作用：Sparkle 按组名存选择状态，组名一变就回落到首个候选 `♻️ 自动选择`，重载后要再点一次出口（本机已设回 `🇺🇸 美国节点 [系统]`）
+  - 实测：浏览器打开 x.com / instagram.com / facebook.com / reddit.com / discord.com / tiktok.com / pinterest.com 全部正常，日志统一 `match GeoSite(meta|tiktok|discord|reddit|pinterest) using 📱 社媒与流媒体 [自选]`；重载后社媒域名落回 `MATCH` 的行数 = 0
 - **2026-11-15 · 3.3**
   - `rules` 44 条 → 71 条：`🎬 流媒体` 由 netflix/disney 两条扩为 **30 个境外视频 GEOSITE**（hbo / hulu / primevideo / youtube / twitch / apple-tvplus / dazn / viu / abema / niconico / tver / tvb / mytvsuper / hamivideo / kktv / litv / ftv / vimeo / dailymotion / plex / mubi / streamable / roku / sling / plutotv / kick / rumble / 7tv），共 757 条记录
   - 删除独立的 `📺 油管专用 [自选]` 组，YouTube 并入流媒体组（组数 20 → 19）

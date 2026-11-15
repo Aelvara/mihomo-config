@@ -1,5 +1,5 @@
 # ============================================================
-# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.3
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.4
 #
 # 面向 Clash Verge / Mihomo Party / Sparkle
 # 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
@@ -12,6 +12,7 @@
 #
 # 3.2：规则全部内联进 rules，无外部规则集依赖；DNS 只用境外 DoH 且强制走代理。
 # 3.3：境外视频站统一并入 🎬 流媒体（30 个 GEOSITE），取消独立「📺 油管专用」组。
+# 3.4：社交平台并入同一组，组名 🎬 流媒体 → 📱 社媒与流媒体（30 视频 + 19 社交分类，共 49 条）。
 # ============================================================
 
 
@@ -158,7 +159,7 @@ proxy-groups:
       - "🌐 全部节点 [系统]"
       - DIRECT
 
-  - name: "🎬 流媒体 [自选]"
+  - name: "📱 社媒与流媒体 [自选]"
     type: select
     proxies:
       - "♻️ 自动选择 [系统]"
@@ -417,37 +418,58 @@ rules:
   - "DOMAIN-SUFFIX,aicoin.com,💰 币圈专用 [自选]"
   - "DOMAIN-SUFFIX,aicoinstorge.com,💰 币圈专用 [自选]"
 
-  # 流媒体：所有境外视频站统一进 🎬 流媒体 [自选]（2026-11-15 由 disney/netflix 两条扩为全量）
-  - "GEOSITE,netflix,🎬 流媒体 [自选]"   # Netflix
-  - "GEOSITE,disney,🎬 流媒体 [自选]"   # Disney+ / Hulu 系（同分类）
-  - "GEOSITE,hbo,🎬 流媒体 [自选]"   # HBO Max
-  - "GEOSITE,hulu,🎬 流媒体 [自选]"   # Hulu
-  - "GEOSITE,primevideo,🎬 流媒体 [自选]"   # Prime Video
-  - "GEOSITE,youtube,🎬 流媒体 [自选]"   # YouTube（原「油管专用」并入）
-  - "GEOSITE,twitch,🎬 流媒体 [自选]"   # Twitch
-  - "GEOSITE,apple-tvplus,🎬 流媒体 [自选]"   # Apple TV+
-  - "GEOSITE,dazn,🎬 流媒体 [自选]"   # DAZN
-  - "GEOSITE,viu,🎬 流媒体 [自选]"   # Viu（港/新/东南亚）
-  - "GEOSITE,abema,🎬 流媒体 [自选]"   # ABEMA（日）
-  - "GEOSITE,niconico,🎬 流媒体 [自选]"   # niconico（日）
-  - "GEOSITE,tver,🎬 流媒体 [自选]"   # TVer（日）
-  - "GEOSITE,tvb,🎬 流媒体 [自选]"   # TVB（港）
-  - "GEOSITE,mytvsuper,🎬 流媒体 [自选]"   # myTV SUPER（港）
-  - "GEOSITE,hamivideo,🎬 流媒体 [自选]"   # Hami Video（台）
-  - "GEOSITE,kktv,🎬 流媒体 [自选]"   # KKTV（台）
-  - "GEOSITE,litv,🎬 流媒体 [自选]"   # LiTV（台）
-  - "GEOSITE,ftv,🎬 流媒体 [自选]"   # FTV 民视（台）
-  - "GEOSITE,vimeo,🎬 流媒体 [自选]"   # Vimeo
-  - "GEOSITE,dailymotion,🎬 流媒体 [自选]"   # Dailymotion
-  - "GEOSITE,plex,🎬 流媒体 [自选]"   # Plex
-  - "GEOSITE,mubi,🎬 流媒体 [自选]"   # MUBI
-  - "GEOSITE,streamable,🎬 流媒体 [自选]"   # Streamable
-  - "GEOSITE,roku,🎬 流媒体 [自选]"   # Roku
-  - "GEOSITE,sling,🎬 流媒体 [自选]"   # Sling TV
-  - "GEOSITE,plutotv,🎬 流媒体 [自选]"   # Pluto TV
-  - "GEOSITE,kick,🎬 流媒体 [自选]"   # Kick
-  - "GEOSITE,rumble,🎬 流媒体 [自选]"   # Rumble
-  - "GEOSITE,7tv,🎬 流媒体 [自选]"   # 7TV
+  # 视频：境外视频站（30 个 GEOSITE）；2026-11-15 由 disney/netflix 两条扩为全量，再与社媒合并为同一组
+  - "GEOSITE,netflix,📱 社媒与流媒体 [自选]"   # Netflix
+  - "GEOSITE,disney,📱 社媒与流媒体 [自选]"   # Disney+ / Hulu 系（同分类）
+  - "GEOSITE,hbo,📱 社媒与流媒体 [自选]"   # HBO Max
+  - "GEOSITE,hulu,📱 社媒与流媒体 [自选]"   # Hulu
+  - "GEOSITE,primevideo,📱 社媒与流媒体 [自选]"   # Prime Video
+  - "GEOSITE,youtube,📱 社媒与流媒体 [自选]"   # YouTube（原「油管专用」并入）
+  - "GEOSITE,twitch,📱 社媒与流媒体 [自选]"   # Twitch
+  - "GEOSITE,apple-tvplus,📱 社媒与流媒体 [自选]"   # Apple TV+
+  - "GEOSITE,dazn,📱 社媒与流媒体 [自选]"   # DAZN
+  - "GEOSITE,viu,📱 社媒与流媒体 [自选]"   # Viu（港/新/东南亚）
+  - "GEOSITE,abema,📱 社媒与流媒体 [自选]"   # ABEMA（日）
+  - "GEOSITE,niconico,📱 社媒与流媒体 [自选]"   # niconico（日）
+  - "GEOSITE,tver,📱 社媒与流媒体 [自选]"   # TVer（日）
+  - "GEOSITE,tvb,📱 社媒与流媒体 [自选]"   # TVB（港）
+  - "GEOSITE,mytvsuper,📱 社媒与流媒体 [自选]"   # myTV SUPER（港）
+  - "GEOSITE,hamivideo,📱 社媒与流媒体 [自选]"   # Hami Video（台）
+  - "GEOSITE,kktv,📱 社媒与流媒体 [自选]"   # KKTV（台）
+  - "GEOSITE,litv,📱 社媒与流媒体 [自选]"   # LiTV（台）
+  - "GEOSITE,ftv,📱 社媒与流媒体 [自选]"   # FTV 民视（台）
+  - "GEOSITE,vimeo,📱 社媒与流媒体 [自选]"   # Vimeo
+  - "GEOSITE,dailymotion,📱 社媒与流媒体 [自选]"   # Dailymotion
+  - "GEOSITE,plex,📱 社媒与流媒体 [自选]"   # Plex
+  - "GEOSITE,mubi,📱 社媒与流媒体 [自选]"   # MUBI
+  - "GEOSITE,streamable,📱 社媒与流媒体 [自选]"   # Streamable
+  - "GEOSITE,roku,📱 社媒与流媒体 [自选]"   # Roku
+  - "GEOSITE,sling,📱 社媒与流媒体 [自选]"   # Sling TV
+  - "GEOSITE,plutotv,📱 社媒与流媒体 [自选]"   # Pluto TV
+  - "GEOSITE,kick,📱 社媒与流媒体 [自选]"   # Kick
+  - "GEOSITE,rumble,📱 社媒与流媒体 [自选]"   # Rumble
+  - "GEOSITE,7tv,📱 社媒与流媒体 [自选]"   # 7TV
+
+  # 社媒：境外主流社交平台并入同一组（2026-11-15 与视频站合并；桌面客户端仍由上面的 PROCESS-NAME-WILDCARD 先命中）
+  - "GEOSITE,meta,📱 社媒与流媒体 [自选]"   # Facebook / Instagram / Threads / WhatsApp
+  - "GEOSITE,messenger,📱 社媒与流媒体 [自选]"   # Messenger
+  - "GEOSITE,twitter,📱 社媒与流媒体 [自选]"   # X / Twitter
+  - "GEOSITE,tiktok,📱 社媒与流媒体 [自选]"   # TikTok
+  - "GEOSITE,reddit,📱 社媒与流媒体 [自选]"   # Reddit
+  - "GEOSITE,discord,📱 社媒与流媒体 [自选]"   # Discord 网页版
+  - "GEOSITE,snap,📱 社媒与流媒体 [自选]"   # Snapchat
+  - "GEOSITE,pinterest,📱 社媒与流媒体 [自选]"   # Pinterest
+  - "GEOSITE,linkedin,📱 社媒与流媒体 [自选]"   # LinkedIn
+  - "GEOSITE,tumblr,📱 社媒与流媒体 [自选]"   # Tumblr
+  - "GEOSITE,quora,📱 社媒与流媒体 [自选]"   # Quora（其中 poe.com 已被前面的 AI 规则先命中）
+  - "GEOSITE,imgur,📱 社媒与流媒体 [自选]"   # Imgur
+  - "GEOSITE,4chan,📱 社媒与流媒体 [自选]"   # 4chan
+  - "GEOSITE,bluesky,📱 社媒与流媒体 [自选]"   # Bluesky
+  - "GEOSITE,clubhouse,📱 社媒与流媒体 [自选]"   # Clubhouse
+  - "GEOSITE,signal,📱 社媒与流媒体 [自选]"   # Signal
+  - "GEOSITE,line,📱 社媒与流媒体 [自选]"   # LINE
+  - "GEOSITE,kakao,📱 社媒与流媒体 [自选]"   # KakaoTalk
+  - "GEOSITE,vk,📱 社媒与流媒体 [自选]"   # VK
 
   # Apple（原 apple provider）
   - "GEOSITE,apple,🍎 苹果服务 [自选]"
