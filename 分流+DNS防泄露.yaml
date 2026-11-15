@@ -17,7 +17,8 @@
 # 3.6：新增 🎵 音乐 [自选]（spotify / apple-music / soundcloud / tidal / deezer，54 条）；
 #      测速站 / Windows 更新 / STUN / BT tracker 四类兜底直连（1074 条）；DoH 上游出口钉在 ♻️ 自动选择。
 # 3.7：国外测速站（fast.com / speedtest.net / ooklaserver.net 等 9 条）→ 🚀 默认代理；国内测速站（speedtest.cn / cnspeedtest.cn）直连。
-# 3.8：进程规则移到 MATCH 之前（只兜无域名的裸流量）；删冗余 GEOSITE,speedtest；补 geolocation-!cn / kaspersky / cline.bot。
+# 3.8：进程规则移到 MATCH 之前（只兜无域名的裸流量）；删冗余 GEOSITE,speedtest；补 geolocation-!cn / kaspersky / cline.bot；
+#      GEOIP,CN 去掉 no-resolve（fake-ip 下 no-resolve 会让域名目的地址匹配不上，未收录的国内站被送进隧道）。
 # ============================================================
 
 # ============================================================
@@ -542,7 +543,7 @@ rules:
   # ★ 兜底：非中国归属（27431 条）显式走默认代理，避免落到 MATCH 后再让 GEOIP 解析
   - "GEOSITE,geolocation-!cn,🚀 默认代理 [自选]"
   - "GEOSITE,CN,DIRECT"
-  - "GEOIP,CN,DIRECT,no-resolve"
+  - "GEOIP,CN,DIRECT"   # 3.8：去掉 no-resolve —— fake-ip 下 no-resolve 会让域名目的地址永远匹配不上，未收录进 geosite:CN 的国内站会被送进隧道
 
   # 其他流量
   # 软件进程兜底（原先排在域名规则之前，会截走这些进程访问的所有域名；放到 MATCH 之前只兜无域名的裸流量）

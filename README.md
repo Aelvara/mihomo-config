@@ -444,7 +444,7 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
   - 新增 `GEOSITE,kaspersky`（132 条）→ `DIRECT`（实测 `p13.upd3.kaspersky.com` 原先落 `MATCH` 走机场）
   - 新增 `DOMAIN-SUFFIX,cline.bot` → `🤖 AI服务`（实测 `api.cline.bot` 原先落 `MATCH`）
   - `rules` 116 条 → **118 条**；离线 `mihomo -t` 通过；热加载后日志实测：`p13.upd3.kaspersky.com` → `GeoSite(kaspersky) DIRECT`、`api.cline.bot` → `DomainSuffix/cline.bot 🤖 AI服务`、`linux.do` / `www.yahoo.com` → `GeoSite(geolocation-!cn) 🚀 默认代理`
-  - 已知限制：`GEOIP,CN,DIRECT,no-resolve` 在 fake-ip 下对域名目的地址不生效（只对裸 IP 生效），未收录进 `geosite:CN` 的国内站会落到 `MATCH` 走代理（例：`codexfree.xiaotuxp.com`）
+  - `GEOIP,CN,DIRECT,no-resolve` → **`GEOIP,CN,DIRECT`**：fake-ip 下 `no-resolve` 使域名目的地址永远匹配不上（只对裸 IP 生效），未收录进 `geosite:CN` 的国内站会被送进隧道；去掉后用 `hosts` 定点验证——域名指向 `114.114.114.114` 时日志为 `match GeoIP/cn … using DIRECT`，改前同类请求全部落 `MATCH`；代价是走到该规则的尾部连接各多一次 DNS 解析（有缓存）
 - **2026-11-15 · 3.7**
   - 测速站按地理拆分：9 条国外测速站（`fast.com` / `speedtest.net` / `ooklaserver.net` / `librespeed.org` / `nperf.com` / `openspeedtest.com` / `speedof.me` / `testmy.net` / `speed.cloudflare.com`）→ `🚀 默认代理`，2 条国内测速站（`speedtest.cn` / `cnspeedtest.cn`）→ `DIRECT`
   - 动因：直连 fast.com 实测首字节 3.5s、Ookla 选到越南节点——直连测的是家宽国际出口，与日常代理路径无关
