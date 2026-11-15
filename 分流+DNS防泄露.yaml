@@ -1,0 +1,485 @@
+# ============================================================
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.1
+#
+# 面向 Clash Verge / Mihomo Party / Sparkle
+# 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
+#
+# 使用：
+# Clash Verge  → 订阅 → 全局扩展覆写配置 → 粘贴全文保存
+# Mihomo Party → 覆写 → 新建 YAML 覆写 → 粘贴全文保存
+# Sparkle      → 覆写 → 新建 YAML 覆写 → 启用 global
+#                （Sparkle 还需同时套用 Sparkle/mihomo.yaml，详见 README）
+#
+# Rule Provider 每 24 小时自动更新。
+# ============================================================
+
+
+# ============================================================
+# 核心网络设置
+# ============================================================
+
+# 关闭 IPv6，避免 IPv4 / IPv6 出口不一致
+ipv6: false
+
+
+# ============================================================
+# TUN
+# ============================================================
+
+tun:
+  enable: true
+  stack: mixed
+  auto-route: true
+  auto-detect-interface: true
+  strict-route: true
+  dns-hijack:
+    - any:53
+    - tcp://any:53
+
+
+# ============================================================
+# DNS
+# ============================================================
+
+dns:
+  enable: true
+
+  # ★ DNS 请求按规则走（配合下方 proxy-server-nameserver）
+  #   false 时 mihomo 直连发 DoH 请求，1.1.1.1 / 8.8.8.8 在境内会被劫持 → 全站解析失败
+  respect-rules: true
+
+  # DNS 服务监听
+  listen: 0.0.0.0:1053
+
+  # 禁止返回 IPv6 DNS 记录
+  ipv6: false
+
+  # Fake-IP
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+
+  # Fake-IP 黑名单
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - '*.lan'
+    - '*.local'
+    - '*.arpa'
+    - 'time.*.com'
+    - 'ntp.*.com'
+    - '+.market.xiaomi.com'
+    - 'localhost.ptlogin2.qq.com'
+    - '*.msftncsi.com'
+    - '*.msftconnecttest.com'
+    - '+.push.apple.com'
+    - '+.steamcontent.com'       # Steam 下载内容服务器
+    - '+.cm.steampowered.com'    # Steam 核心连接管理器
+    - 'csgo.wmsj.cn'             # CS2/完美世界相关直连域名
+    # ★ hltv 拿真实 IP：它挂在 Cloudflare 上，fake-ip 会让 CF 按出口判定地区
+    - '+.hltv.org'
+    - '+.hltv.com'
+  # ★ 上游只用境外 DoH（走代理出口）。国内 DoH（doh.pub / dns.alidns.com）实测被投毒：
+  #   dns.alidns.com 直连解析 www.youtube.com 返回 185.45.5.35（Twitter 的 IP）
+  # ★ 国内域名由 nameserver-policy 的 geosite:cn 分流到 223.5.5.5 / 119.29.29.29，不依赖这里
+  # ★ 前提：🚀 默认代理 必须落在能通 DoH 的节点，见 ♻️ 自动选择 的测速 URL
+  nameserver:
+    - "https://1.1.1.1/dns-query"
+    - "https://8.8.8.8/dns-query"
+    - "https://dns.google/dns-query"
+  nameserver-policy:
+    'geosite:cn,private,bytedance':
+      - 223.5.5.5
+      - 119.29.29.29
+
+  # ★ 关掉 fallback 链：订阅模板会塞进 cloudflare-dns.com + dns.alidns.com + doh.pub，
+  #   其中两个国内 DoH 在 respect-rules 下走 DIRECT 并被投毒（google/youtube 实测返回 Facebook 段 IP）。
+  #   nameserver 已全部走代理出口的境外 DoH，fallback 既多余又有害。
+  fallback: []
+
+  # 解析 DNS 服务器自身（必须是 IP）
+  default-nameserver:
+    - 223.5.5.5
+    - 223.6.6.6
+    - 119.29.29.29
+
+  # 代理节点域名解析
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+  # ★ DIRECT 流量的 DNS
+  direct-nameserver:
+    - 223.5.5.5
+    - 223.6.6.6
+
+  # ★ DIRECT DNS 不跟随代理策略
+  direct-nameserver-follow-policy: false
+
+rule-providers:
+
+  ads:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/ads.yaml"
+
+  ai:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/ai.yaml"
+
+  youtube:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/youtube.yaml"
+
+  crypto:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/crypto.yaml"
+
+  disney:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/disney.yaml"
+
+  apple:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/apple.yaml"
+
+  google:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/google.yaml"
+
+  software:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/software.yaml"
+
+  steam_download:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/Steam_Download.yaml"  
+
+
+# ============================================================
+# Proxy Groups
+# ============================================================
+
+proxy-groups:
+
+  # ---------- 用户自选组 ----------
+
+  - name: "🚀 默认代理 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+
+  - name: "🤖 AI服务 [自选]"
+    type: select
+    proxies:
+      - "🇺🇸 美国节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "📺 油管专用 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "🎬 流媒体 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "💬 电报专用 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "Ⓜ️ 微软服务 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "🍎 苹果服务 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "🔍 谷歌服务 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "💰 币圈专用 [自选]"
+    type: select
+    proxies:
+      - "♻️ 自动选择 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+  - name: "🖥️ 软件分流 [自选]"
+    type: select
+    proxies:
+      - "🚀 默认代理 [自选]"
+      - "♻️ 自动选择 [系统]"
+      - "🇭🇰 香港节点 [系统]"
+      - "🇯🇵 日本节点 [系统]"
+      - "🇸🇬 新加坡节点 [系统]"
+      - "🇺🇸 美国节点 [系统]"
+      - "🇹🇼 台湾节点 [系统]"
+      - "🌍 其他地区 [系统]"
+      - "🌐 全部节点 [系统]"
+      - DIRECT
+
+
+  # ---------- 系统组 ----------
+
+  - name: "🌐 全部节点 [系统]"
+    type: select
+    include-all-proxies: true
+    exclude-type: "Direct"
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+
+  - name: "♻️ 自动选择 [系统]"
+    type: url-test
+    include-all-proxies: true
+    exclude-type: "Direct"
+    exclude-filter: "(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website"
+    # ★ 测速 URL 用 DoH 端点：只测 gstatic 会选到"通网页但不通 DoH"的节点（如 新加坡-hy2），
+    #   而 DNS 上游要经代理出口出去（respect-rules + proxy-server-nameserver），这类节点一旦被选中 → 全站 DNS 立刻 EOF
+    url: "https://1.1.1.1/dns-query"
+    interval: 300
+    tolerance: 50
+    lazy: false
+
+
+  # ==========================================================
+  # 地区节点
+  # ==========================================================
+
+  - name: "🇭🇰 香港节点 [系统]"
+    type: url-test
+    include-all-proxies: true
+    # filter 只保留当前订阅里真实存在的港股；订阅里没有港股时本组为空（mihomo 会填入 COMPATIBLE=直连），UI 上可见 0 个真实节点。
+    filter: '(?i)🇭🇰|香港|港|\bHK\b|\bHKG\b|Hong[ -]?Kong'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    exclude-type: "Direct"
+    url: "https://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    lazy: true
+
+  - name: "🇯🇵 日本节点 [系统]"
+    type: url-test
+    include-all-proxies: true
+    filter: '(?i)🇯🇵|日本|日|\bJP\b|\bJPN\b|Japan|Tokyo|Osaka'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    exclude-type: "Direct"
+    url: "https://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    lazy: true
+
+  - name: "🇸🇬 新加坡节点 [系统]"
+    type: url-test
+    include-all-proxies: true
+    # 【修改参数】扩充了正则表达式，增加了“狮城”、“坡县”及常见连接符的宽容匹配
+    filter: '(?i)🇸🇬|新加坡|新国|狮城|坡县|\bSG\b|\bSGP\b|Singapore|-SG-|_SG_'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    exclude-type: "Direct"
+    url: "https://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    lazy: true
+
+  - name: "🇺🇸 美国节点 [系统]"
+    type: url-test
+    include-all-proxies: true
+    filter: '(?i)🇺🇸|美国|美|\bUS\b|\bUSA\b|United[ -]?States|America|Los[ -]?Angeles|New[ -]?York|San[ -]?Francisco'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    exclude-type: "Direct"
+    url: "https://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    lazy: true
+
+  - name: "🇹🇼 台湾节点 [系统]"
+    type: url-test
+    include-all-proxies: true
+    filter: '(?i)🇹🇼|台湾|台|\bTW\b|\bTWN\b|Taiwan|Taipei'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    exclude-type: "Direct"
+    url: "https://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    lazy: true
+
+
+  # ==========================================================
+  # 其他地区
+  #
+  # 除香港 / 日本 / 新加坡 / 美国 / 台湾之外，
+  # 其它所有代理节点自动进入此组。
+  #
+  # 这样无论机场出现德国、加拿大、英国、越南、印度，
+  # 还是未来出现法国、荷兰、澳大利亚、巴西等节点，
+  # 都不需要再次修改配置。
+  # ==========================================================
+
+  - name: "🌍 其他地区 [系统]"
+    type: select
+    include-all-proxies: true
+    # 只从当前订阅里筛「非港/日/新/美/台」的节点；当前订阅没有这类节点时本组为空。
+    filter: '(?i)^(?!.*(?:🇭🇰|🇯🇵|🇸🇬|🇺🇸|🇹🇼|香港|日本|新加坡|美国|台湾|\bHK\b|\bHKG\b|\bJP\b|\bJPN\b|\bSG\b|\bSGP\b|\bUS\b|\bUSA\b|\bTW\b|\bTWN\b|\bAUTO\b|\bPROXY\b|Hong[ -]?Kong|Japan|Tokyo|Osaka|Singapore|United[ -]?States|America|Los[ -]?Angeles|New[ -]?York|San[ -]?Francisco|Taiwan|Taipei)).*'
+    exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
+    exclude-type: "Direct"
+
+
+  # ---------- 广告拦截 ----------
+
+  - name: "🛑 广告拦截 [系统]"
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+
+
+# ============================================================
+# Rules
+# ============================================================
+
+rules:
+
+  # ★ hltv 走直连：代理落地 IP（新加坡/日本共享段）被 CF 持续挑战，本机家宽出口反而能正常过
+  - "DOMAIN-SUFFIX,hltv.org,DIRECT"
+  - "DOMAIN-SUFFIX,hltv.com,DIRECT"
+
+  # 【新增】Steam 下载与内容服务器直连
+  - "RULE-SET,steam_download,DIRECT"
+
+  # 软件进程优先
+  - "RULE-SET,software,🖥️ 软件分流 [自选]"
+
+  # 私有地址 / 局域网
+  - "GEOSITE,private,DIRECT"
+  - "GEOIP,private,DIRECT,no-resolve"
+
+  # 广告
+  - "RULE-SET,ads,🛑 广告拦截 [系统]"
+
+  # AI
+  - "RULE-SET,ai,🤖 AI服务 [自选]"
+
+  # YouTube
+  - "RULE-SET,youtube,📺 油管专用 [自选]"
+
+  # 币圈
+  - "RULE-SET,crypto,💰 币圈专用 [自选]"
+
+  # 流媒体
+  - "RULE-SET,disney,🎬 流媒体 [自选]"
+  - "GEOSITE,netflix,🎬 流媒体 [自选]"
+
+  # Apple
+  - "RULE-SET,apple,🍎 苹果服务 [自选]"
+
+  # Google
+  - "RULE-SET,google,🔍 谷歌服务 [自选]"
+
+  # Telegram
+  - "GEOSITE,telegram,💬 电报专用 [自选]"
+
+  # Microsoft
+  - "GEOSITE,microsoft,Ⓜ️ 微软服务 [自选]"
+
+  # 中国大陆
+  - "GEOSITE,CN,DIRECT"
+  - "GEOIP,CN,DIRECT,no-resolve"
+
+  # 其他流量
+  - "MATCH,🚀 默认代理 [自选]"

@@ -1,0 +1,80 @@
+core: mihomo-alpha
+updateChannel: stable
+notificationMode: system
+showUpdateButtonAfterNotification: true
+silentStart: false
+appTheme: system
+useWindowFrame: false
+proxyInTray: true
+customTrayIcon: ""
+trayProxyDelayLayout: new-line
+useCustomTrayMenu: false
+saveLogs: true
+maxLogDays: 7
+maxLogFileSizeMB: 20
+maxLogEntries: 500
+proxyCols: auto
+connectionDirection: asc
+connectionOrderBy: time
+connectionGroupByProcess: false
+connectionGroupSort: name
+connectionGroupDirection: asc
+connectionInterval: 500
+gistSyncEnabled: false
+gistEncrypted: false
+useSubStore: true
+proxyDisplayOrder: default
+autoCheckUpdate: true
+autoCloseConnection: true
+closeMode: all
+controlDns: true
+controlSniff: true
+siderOrder:
+  - sysproxy
+  - tun
+  - dns
+  - sniff
+  - profile
+  - proxy
+  - override
+  - connection
+  - mihomo
+  - rule
+  - resource
+  - log
+  - substore
+siderWidth: 250
+sysProxy:
+  enable: false
+  mode: manual
+  guard: false
+  guardNotify: false
+disableLoopbackDetector: false
+disableEmbedCA: false
+disableSystemCA: false
+disableNftables: false
+safePaths: []
+disableGPU: false
+proxyDisplayLayout: double
+groupDisplayLayout: double
+showGroupSelectedProxy: false
+autoLightweightMode: core
+coreStartupMode: post-up
+delayTestConcurrency: 50
+delayTestUseGroupApi: false
+delayTestUrlScope: group
+showProxyDetailTooltip: false
+proxyCardStatus: col-span-1
+profileDisplayDate: update
+customTheme: One-Dark-Pro.css
+enableWindowDrag: false
+serviceRunMode: auto
+realtimeLogLevel: info
+serviceCpuAffinity: []
+autoLightweight: false
+corePermissionMode: elevated
+hosts: []
+dnsCardStatus: col-span-1
+mihomoCoreCardStatus: col-span-2
+sysproxyCardStatus: col-span-1
+sniffCardStatus: col-span-1

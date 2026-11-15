@@ -1,0 +1,103 @@
+// ================= 规则集通用配置 =================
+const ruleProviderCommon = {
+  type: "http",
+  format: "yaml",
+  interval: 86400,
+  behavior: "domain"
+};
+
+// ================= 主逻辑 =================
+function main(config) {
+  config["tcp-concurrent"] = true;
+  config["unified-delay"] = true;
+  config["global-client-fingerprint"] = "chrome";
+
+  // ★ 系统代理模式下 TUN 本来就不生效，这里只做保险性关闭，
+  // 用展开写法避免覆盖掉基础配置里 tun 的其他字段（stack / dns-hijack 等）
+  config["tun"] = {
+    ...(config["tun"] || {}),
+    enable: false
+  };
+
+  // ===== 1. 规则集 =====
+  config["rule-providers"] = {
+    reject: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt", path: "./ruleset/reject.yaml" },
+    icloud: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/icloud.txt", path: "./ruleset/icloud.yaml" },
+    google: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/google.txt", path: "./ruleset/google.yaml" },
+    openai: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/openai.txt", path: "./ruleset/openai.yaml" },
+    proxy: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt", path: "./ruleset/proxy.yaml" },
+    direct: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt", path: "./ruleset/direct.yaml" },
+    gfw: { ...ruleProviderCommon, url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt", path: "./ruleset/gfw.yaml" },
+    telegramcidr: { ...ruleProviderCommon, behavior: "ipcidr", url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt", path: "./ruleset/telegramcidr.yaml" },
+    cncidr: { ...ruleProviderCommon, behavior: "ipcidr", url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt", path: "./ruleset/cncidr.yaml" }
+  };
+
+  // ===== 2. 代理组 =====
+  const groupBase = { interval: 300, url: "https://www.google.com/generate_204", lazy: true };
+  config["proxy-groups"] = [
+    {
+      ...groupBase,
+      name: "专属定制",
+      type: "select",
+      proxies: ["DIRECT"],
+      "include-all": true,
+      // 加词边界，避免 "us" 误中 Russia / Belarus / Mauritius 等节点名
+      filter: "(?i)美国|(^|[^a-zA-Z])us([^a-zA-Z]|$)|united states|洛杉矶|硅谷|波特兰|西雅图|los angeles|san jose"
+    },
+    { ...groupBase, name: "节点选择", type: "select", proxies: ["自动选择", "故障转移"], "include-all": true },
+    { ...groupBase, name: "自动选择", type: "url-test", tolerance: 100, "include-all": true },
+    { ...groupBase, name: "故障转移", type: "fallback", "include-all": true },
+    { ...groupBase, name: "Telegram", type: "select", proxies: ["节点选择", "自动选择", "DIRECT"] },
+    { ...groupBase, name: "YouTube", type: "select", proxies: ["节点选择", "自动选择"] },
+    { ...groupBase, name: "广告过滤", type: "select", proxies: ["REJECT", "DIRECT"] },
+    { ...groupBase, name: "全局直连", type: "select", proxies: ["DIRECT", "节点选择"] },
+    { ...groupBase, name: "漏网之鱼", type: "select", proxies: ["节点选择", "自动选择", "DIRECT"] }
+  ];
+
+  // ===== 3. 分流规则 =====
+  config["rules"] = [
+    "RULE-SET,reject,广告过滤",
+
+    // ★ 社交媒体 -> 专属定制
+    "DOMAIN-SUFFIX,x.com,专属定制",
+    "DOMAIN-SUFFIX,twitter.com,专属定制",
+    "DOMAIN-SUFFIX,twimg.com,专属定制",
+    "DOMAIN-SUFFIX,t.co,专属定制",
+
+    // ★ AI 平台全家桶 -> 专属定制
+    "RULE-SET,openai,专属定制",
+    "DOMAIN-SUFFIX,openai.com,专属定制",
+    "DOMAIN-SUFFIX,chatgpt.com,专属定制",
+    "DOMAIN-SUFFIX,oaistatic.com,专属定制", // ChatGPT 静态资源
+    "DOMAIN-SUFFIX,oaiusercontent.com,专属定制", // ChatGPT 用户上传资源
+    "DOMAIN-KEYWORD,openai,专属定制",
+    "DOMAIN-SUFFIX,claude.ai,专属定制",
+    "DOMAIN-SUFFIX,anthropic.com,专属定制",
+    "DOMAIN-KEYWORD,claude,专属定制",
+    "DOMAIN-SUFFIX,gemini.google.com,专属定制",
+    "DOMAIN-SUFFIX,pro.aistudio.google.com,专属定制", // Google AI Studio
+    "DOMAIN-SUFFIX,generativelanguage.googleapis.com,专属定制", // Gemini API
+
+    "RULE-SET,telegramcidr,Telegram,no-resolve",
+
+    "DOMAIN-SUFFIX,youtube.com,YouTube",
+    "DOMAIN-SUFFIX,googlevideo.com,YouTube",
+    "DOMAIN-SUFFIX,ytimg.com,YouTube",
+
+    "RULE-SET,google,节点选择",
+    "RULE-SET,icloud,DIRECT",
+    "RULE-SET,proxy,节点选择",
+    "RULE-SET,gfw,节点选择",
+    "RULE-SET,direct,DIRECT",
+    "GEOSITE,CN,DIRECT",
+
+    // 让内核不要在国内 IP 上自作主张
+    "RULE-SET,cncidr,DIRECT,no-resolve",
+    "GEOIP,LAN,DIRECT,no-resolve",
+    "GEOIP,CN,DIRECT,no-resolve",
+
+    "MATCH,漏网之鱼"
+  ];
+
+  return config;
+}
