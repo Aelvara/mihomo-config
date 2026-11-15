@@ -1,5 +1,5 @@
 # ============================================================
-# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.1
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.2
 #
 # 面向 Clash Verge / Mihomo Party / Sparkle
 # 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
@@ -10,8 +10,9 @@
 # Sparkle      → 覆写 → 新建 YAML 覆写 → 启用 global
 #                （Sparkle 还需同时套用 Sparkle/mihomo.yaml，详见 README）
 #
-# Rule Provider 每 24 小时自动更新。
+# 3.2：规则全部内联进 rules，无外部规则集依赖；DNS 只用境外 DoH 且强制走代理。
 # ============================================================
+
 
 
 # ============================================================
@@ -114,70 +115,14 @@ dns:
   # ★ DIRECT DNS 不跟随代理策略
   direct-nameserver-follow-policy: false
 
-rule-providers:
-
-  ads:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/ads.yaml"
-
-  ai:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/ai.yaml"
-
-  youtube:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/youtube.yaml"
-
-  crypto:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/crypto.yaml"
-
-  disney:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/disney.yaml"
-
-  apple:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/apple.yaml"
-
-  google:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/google.yaml"
-
-  software:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/software.yaml"
-
-  steam_download:
-    type: http
-    behavior: classical
-    format: yaml
-    interval: 86400
-    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/Steam_Download.yaml"  
+# ============================================================
+# Rule Providers —— 已全部内联，无需远程规则集
+# ============================================================
+# 原因：原 9 个 provider 里 6 个内容只有一行 "GEOSITE,xxx"，数据本就在本地 geosite.dat
+#      （geo-update-interval 自动更新）；另 2 个（software / steam_download）不足 1KB。
+#      内联后整份配置零外部依赖：上游删库、jsDelivr 缓存延迟、断网都不影响分流。
+# 恢复远程规则的方法：在此处重新写 rule-providers 段，并在 rules 里把对应
+#      GEOSITE,xxx,<策略> 换回 RULE-SET 写法（RULE-SET + 分隔符 + provider 名 + 策略）。
 
 
 # ============================================================
@@ -436,40 +381,66 @@ proxy-groups:
 rules:
 
   # ★ hltv 走直连：代理落地 IP（新加坡/日本共享段）被 CF 持续挑战，本机家宽出口反而能正常过
+  # ★ GitHub SSH(443) 走直连：机场共享出口常被 RST，家宽直连稳定
+  - "DOMAIN-SUFFIX,ssh.github.com,DIRECT"
   - "DOMAIN-SUFFIX,hltv.org,DIRECT"
   - "DOMAIN-SUFFIX,hltv.com,DIRECT"
 
-  # 【新增】Steam 下载与内容服务器直连
-  - "RULE-SET,steam_download,DIRECT"
+  # Steam 下载与内容服务器直连（原 steam_download provider 的 19 条，已内联）
+  - "DOMAIN,steamcdn-a.akamaihd.net,DIRECT"
+  - "DOMAIN-SUFFIX,steamcontent.com,DIRECT"
+  - "DOMAIN-SUFFIX,steamserver.net,DIRECT"
+  - "DOMAIN-SUFFIX,steampipe.akamaized.net,DIRECT"
+  - "DOMAIN-SUFFIX,steampipe-kr.akamaized.net,DIRECT"
+  - "DOMAIN-SUFFIX,steampipe-partner.akamaized.net,DIRECT"
+  - "DOMAIN-SUFFIX,steam.cdn.on.net,DIRECT"
+  - "DOMAIN-SUFFIX,steam.apac.qtlglb.com,DIRECT"
+  - "DOMAIN-SUFFIX,steam.eca.qtlglb.com,DIRECT"
+  - "DOMAIN-SUFFIX,steam.naeu.qtlglb.com,DIRECT"
+  - "DOMAIN-SUFFIX,steam.ru.qtlglb.com,DIRECT"
+  - "DOMAIN-SUFFIX,steam.cdn.webra.ru,DIRECT"
+  - "DOMAIN-SUFFIX,steam.cdn.orcon.net.nz,DIRECT"
+  - "DOMAIN-SUFFIX,steam.cdn.slingshot.co.nz,DIRECT"
+  - "DOMAIN-SUFFIX,dl.steam.clngaa.com,DIRECT"
+  - "DOMAIN-SUFFIX,st.dl.bscstorage.net,DIRECT"
+  - "DOMAIN-SUFFIX,st.dl.eccdnx.com,DIRECT"
+  - "DOMAIN-SUFFIX,st.dl.pinyuncloud.com,DIRECT"
+  - "DOMAIN-SUFFIX,alibaba.cdn.steampipe.steamcontent.com,DIRECT"
 
-  # 软件进程优先
-  - "RULE-SET,software,🖥️ 软件分流 [自选]"
+  # 软件进程优先（原 software provider，已内联；PROCESS-NAME-WILDCARD 依赖 find-process-mode: always）
+  - "PROCESS-NAME-WILDCARD,*Discord*,🖥️ 软件分流 [自选]"
+  - "PROCESS-NAME-WILDCARD,*Steam*,🖥️ 软件分流 [自选]"
+  - "PROCESS-NAME-WILDCARD,*EpicGames*,🖥️ 软件分流 [自选]"
+  - "PROCESS-NAME-WILDCARD,*WhatsApp*,🖥️ 软件分流 [自选]"
 
   # 私有地址 / 局域网
   - "GEOSITE,private,DIRECT"
   - "GEOIP,private,DIRECT,no-resolve"
 
-  # 广告
-  - "RULE-SET,ads,🛑 广告拦截 [系统]"
+  # 广告（原 ads provider → 单行 GEOSITE，已内联）
+  - "GEOSITE,category-ads-all,🛑 广告拦截 [系统]"
 
-  # AI
-  - "RULE-SET,ai,🤖 AI服务 [自选]"
+  # AI（原 ai provider）
+  - "GEOSITE,category-ai-!cn,🤖 AI服务 [自选]"
 
-  # YouTube
-  - "RULE-SET,youtube,📺 油管专用 [自选]"
+  # YouTube（原 youtube provider）
+  - "GEOSITE,youtube,📺 油管专用 [自选]"
 
-  # 币圈
-  - "RULE-SET,crypto,💰 币圈专用 [自选]"
+  # 币圈（原 crypto provider：1 条 GEOSITE + 3 条域名）
+  - "GEOSITE,category-cryptocurrency,💰 币圈专用 [自选]"
+  - "DOMAIN-SUFFIX,long.xyz,💰 币圈专用 [自选]"
+  - "DOMAIN-SUFFIX,aicoin.com,💰 币圈专用 [自选]"
+  - "DOMAIN-SUFFIX,aicoinstorge.com,💰 币圈专用 [自选]"
 
-  # 流媒体
-  - "RULE-SET,disney,🎬 流媒体 [自选]"
+  # 流媒体（原 disney provider + 原生 netflix）
+  - "GEOSITE,disney,🎬 流媒体 [自选]"
   - "GEOSITE,netflix,🎬 流媒体 [自选]"
 
-  # Apple
-  - "RULE-SET,apple,🍎 苹果服务 [自选]"
+  # Apple（原 apple provider）
+  - "GEOSITE,apple,🍎 苹果服务 [自选]"
 
-  # Google
-  - "RULE-SET,google,🔍 谷歌服务 [自选]"
+  # Google（原 google provider）
+  - "GEOSITE,google,🔍 谷歌服务 [自选]"
 
   # Telegram
   - "GEOSITE,telegram,💬 电报专用 [自选]"

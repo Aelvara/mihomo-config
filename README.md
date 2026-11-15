@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.1）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.2）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -36,7 +36,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 ---
 
-## 三条核心设计
+## 四条核心设计
 
 ### 1. DNS：只用境外 DoH，并且强制走代理
 
@@ -83,6 +83,27 @@ fake-ip-filter:
   - 订阅里有港股就自动出来，没有就是空组。
   - 空组 mihomo 会自动塞进 `COMPATIBLE`（= DIRECT 别名），UI 显示 1 个绿色节点但其实是直连 —— 这是内核行为，不是配置写错。
   - **不要用 `proxy-providers` 把别的订阅硬挂进来**：provider 的 url 只能是静态字符串，等于把订阅地址和 token 明文写死在配置文件里，换订阅就废。
+
+### 4. 规则：全部内联进 `rules`，不依赖任何远程规则集
+
+早期版本挂了 9 个 `rule-providers`，全部指向 `cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/...`，`interval: 86400`。实测这 9 份规则的真实内容：
+
+| provider | 实际内容 | 字节 |
+| --- | --- | --- |
+| `ads` / `ai` / `youtube` / `disney` / `apple` / `google` | 各只有一行 `GEOSITE,xxx` | 27–38 B |
+| `crypto` | `GEOSITE,category-cryptocurrency` + 3 条域名 | 136 B |
+| `software` | 4 条 `PROCESS-NAME-WILDCARD`（Discord / Steam / EpicGames / WhatsApp） | 207 B |
+| `steam_download` | 19 条 steamcontent 域名 | 773 B |
+
+也就是 6 个 provider 只是给本地 `geosite.dat` 套了一层 YAML 外壳，还要每天跨境下载一遍。3.2 起全部内联：
+
+- 6 个 GEOSITE 类 → 直接写成 `GEOSITE,category-ads-all,🛑 广告拦截 [系统]` 这样的原生规则；
+- `software` / `steam_download` → 展开成 `PROCESS-NAME-WILDCARD` 与 `DOMAIN-SUFFIX` 规则（`PROCESS-NAME-WILDCARD` 依赖 `find-process-mode: always`，订阅模板一般已带）；
+- `rule-providers` 整段删除，`rules` 由 20 条（含 9 条 `RULE-SET`）变成 44 条直写规则。
+
+收益是整份配置**零外部依赖**：上游删库、jsDelivr 缓存延迟、断网、换机场订阅，都不会让分流悄悄失效。代价是想加规则得改这个文件 —— 本来也是这么用的。
+
+> 真要恢复远程规则：把 `rule-providers` 段加回来、`rules` 里改回 `RULE-SET,<provider>,<策略>`。但**别用 `@main`**，钉 commit：`https://cdn.jsdelivr.net/gh/<owner>/<repo>@<sha>/rules/xxx.yaml`。jsDelivr 对 `@main` 最长 12 小时缓存，改了不生效极容易被误判成「覆写没合并」。
 
 ---
 
@@ -230,6 +251,7 @@ rules:
 | Sparkle 面板 DNS 卡片三条输入框报红：参数不合法 | Sparkle 前端校验器只允许字母/数字/中文/空格/`-`/`_`，不允许 emoji 和方括号，所以 `https://1.1.1.1/dns-query#🚀 默认代理 [自选]` 必红 | 去掉 `#策略名` 后缀，改成靠 `respect-rules` 让 DNS 走规则（效果等价，日志里能看到 DoH 连接走代理组） |
 | 每次重启后 `ipv6: false` 丢失、日志刷 `unreachable network` | Sparkle 合成配置时 `deepMerge(订阅, 面板 mihomo.yaml)`，面板里是 `ipv6: true` 就把覆写的 `false` 顶掉，随后 `cleanBooleanConfigs` 因 `true !== false` 把整个顶层 `ipv6` 删掉，内核回落默认 true | 改 `Sparkle/mihomo.yaml` 顶层的 `ipv6: false`（治本），而不是每次手动往合成配置里补 |
 | fake-ip 完全不生效 | `fake-ip-filter` 里有 `*` | 删掉 |
+| 规则集改了 24 小时还不生效 / 某类站点忽然不再分流 | ① jsDelivr 对 `@main` 最长 12h 缓存；② provider 上游删库或改名后，内核拉取失败会继续用 `work/rules/<md5>` 旧缓存，日志刷 `initial provider xxx error`，界面没有任何提示 | 规则内联（3.2 已全部内联）；必须用远程规则就钉 commit，并盯内核日志 |
 
 ---
 
@@ -260,6 +282,12 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.2**
+  - 删除全部 9 个 `rule-providers`，规则内联进 `rules`（20 条 → 44 条直写规则，0 条 `RULE-SET`）
+  - 6 个 GEOSITE 包装型 provider 还原为原生 `GEOSITE,xxx,<策略>`（`category-ads-all` / `category-ai-!cn` / `youtube` / `category-cryptocurrency` / `disney` / `apple` / `google`）
+  - `software` 的 4 条进程规则、`steam_download` 的 19 条域名规则展开内联
+  - 新增 `DOMAIN-SUFFIX,ssh.github.com,DIRECT`（机场共享出口对 22/443 常 RST）
+  - 离线 `mihomo -t` 通过，geosite 记录数校验一致（ads 911 / apple 1792 / google 1075 / disney 225 / youtube 178 / crypto 235 / ai 182）
 - **2026-11-15 · 仓库迁移**
   - 仓库由 `clash-verge-script` 迁出并更名为 `mihomo-config`，覆盖面统一写成 Clash Verge / Mihomo Party / Sparkle 三端
   - 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段全部移入 [`archive/`](archive/README.md)，根目录只保留当前在用产物
