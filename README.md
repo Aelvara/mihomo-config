@@ -11,7 +11,7 @@ Clash Verge / Mihomo Party / Sparkle 的**分流 + DNS 防污染**配置集。
 
 | 文件 | 类型 | 用途 |
 | --- | --- | --- |
-| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.6）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；测速站 / Windows 更新 / STUN / BT tracker 兜底直连 |
+| `分流+DNS防泄露.yaml` | YAML 覆写 | **主配置（3.7）**。Clash Verge / Mihomo Party / Sparkle 通用覆写，DNS + 分流 + 节点组一把梭；规则已全部内联，零外部规则集依赖；境外视频、社交、音乐各一个组，视频默认走按延迟择优的测速组；国外测速站走代理、国内测速站直连；Windows 更新 / STUN / BT tracker 兜底直连 |
 | `Sparkle/mihomo.yaml` | 内核配置 | Sparkle 面板「内核配置」的持久化文件，含顶层 `ipv6` / `tun` / 完整 `dns` 段 |
 | `Sparkle/config.yaml` | 应用设置 | Sparkle 应用层设置，关键项是 `controlDns`（决定 DNS 卡片能否管理内核 DNS） |
 | `archive/` | 存档 | 3.0 旧版覆写、历代 DNS 配置、Clash Verge 扩展脚本、Mihomo Party DNS 片段，**只读留档**，详见 [`archive/README.md`](archive/README.md) |
@@ -240,6 +240,20 @@ fake-ip-filter:
 
 这 6 条写在 Steam 下载域名之后、`PROCESS-NAME-WILDCARD` 之前：域名规则先命中，才不会被 `*Steam*` / `*Discord*` 这类进程规则带去 `🖥️ 软件分流`。
 
+#### 国内外测速站必须分开（3.7）
+
+3.6 把 `category-speedtest` 整个塞进 `DIRECT`，等于默认「你要测的是家宽」。但 fast.com、speedtest.net 这类站点的测速端点全在境外：直连时测到的是「家宽 → 国际出口」，和日常浏览的「家宽 → 机场落地 → 目标」是两条完全不同的路径，数字对你调节点没有参考价值。实测直连 fast.com：首字节 3.5s，Ookla 还把测速服务器选到了越南节点。
+
+| 用途 | 该走哪条 | 3.7 规则 |
+| --- | --- | --- |
+| 测家宽真实带宽 | 直连 | `speedtest.cn` / `cnspeedtest.cn` → `DIRECT` |
+| 测机场（代理）带宽 | 代理 | `fast.com` / `speedtest.net` / `ooklaserver.net` / `librespeed.org` / `nperf.com` / `openspeedtest.com` / `speedof.me` / `testmy.net` / `speed.cloudflare.com` → `🚀 默认代理` |
+
+`api.fast.com` 被 `DOMAIN-SUFFIX,fast.com` 覆盖；`ooklaserver.net` 是 Ookla 各节点测速服务器的统一后缀，走代理后服务器列表会按代理落地就近选（实测落到新加坡 / 印尼节点），测出来的就是该节点的带宽。想横向比节点，把 `🚀 默认代理` 临时切到目标组再测一次即可。
+
+`category-speedtest`（77 条）和 `speedtest`（14 条）仍整体 `DIRECT`，作用是兜住国内长尾测速站（各省运营商、宽带厂商自建测速页）；代价是其中少量国外域名也会直连，想彻底干净就删掉这两条，只留上面 9 条代理规则。
+
+
 ---
 
 ## 为什么覆写必须搭配 `Sparkle/mihomo.yaml` 一起用
@@ -422,6 +436,10 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
 
 ## 变更记录
 
+- **2026-11-15 · 3.7**
+  - 测速站按地理拆分：9 条国外测速站（`fast.com` / `speedtest.net` / `ooklaserver.net` / `librespeed.org` / `nperf.com` / `openspeedtest.com` / `speedof.me` / `testmy.net` / `speed.cloudflare.com`）→ `🚀 默认代理`，2 条国内测速站（`speedtest.cn` / `cnspeedtest.cn`）→ `DIRECT`
+  - 动因：直连 fast.com 实测首字节 3.5s、Ookla 选到越南节点——直连测的是家宽国际出口，与日常代理路径无关
+  - `rules` 105 条 → **116 条**；`proxy-groups` 仍 21 组；离线 `mihomo -t` 通过；热加载后实测 fast.com / speedtest.net / librespeed.org → `🚀 默认代理`，`www.speedtest.cn` → `DIRECT`；浏览器实测 fast.com 正常出数（24 Mbps）
 - **2026-11-15 · 3.6**
   - 新增 `🎵 音乐 [自选]`（select，默认 `♻️ 自动选择`），收 `spotify`(28) / `apple-music`(18) / `soundcloud`(3) / `tidal`(3) / `deezer`(2)，共 54 条；`apple-music` 排在 `GEOSITE,apple` 之前
   - 新增 6 条兜底直连：`category-speedtest`(77) / `speedtest`(14) / `win-update`(364) / `win-extra`(355) / `category-stun`(359) / `category-public-tracker`(437)，共 1074 条，位置在 Steam 域名之后、`PROCESS-NAME-WILDCARD` 之前

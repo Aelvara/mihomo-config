@@ -1,5 +1,5 @@
 # ============================================================
-# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.6
+# 阿尔忒弥斯实验室 · Mihomo 分流 + DNS 防污染 3.7
 #
 # 面向 Clash Verge / Mihomo Party / Sparkle
 # 支持 Fake-IP、TUN、IPv6 防泄漏及多场景规则分流。
@@ -423,6 +423,20 @@ rules:
   - "DOMAIN-SUFFIX,st.dl.pinyuncloud.com,DIRECT"
   - "DOMAIN-SUFFIX,alibaba.cdn.steampipe.steamcontent.com,DIRECT"
 
+  # ★ 国外测速站走代理：直连测到的是家宽的国际出口，和日常浏览（机场落地）不是同一条路径
+  # ★ 想测家宽真实带宽用 speedtest.cn（下面直连）；想测机场带宽用 fast.com / speedtest.net（走代理）
+  - "DOMAIN-SUFFIX,fast.com,🚀 默认代理 [自选]"   # Netflix 的测速站（api.fast.com 同域）
+  - "DOMAIN-SUFFIX,speedtest.net,🚀 默认代理 [自选]"   # Ookla 国际版
+  - "DOMAIN-SUFFIX,ooklaserver.net,🚀 默认代理 [自选]"   # Ookla 各节点测速服务器域名
+  - "DOMAIN-SUFFIX,librespeed.org,🚀 默认代理 [自选]"   # 开源测速站
+  - "DOMAIN-SUFFIX,nperf.com,🚀 默认代理 [自选]"   # 法国 nPerf
+  - "DOMAIN-SUFFIX,openspeedtest.com,🚀 默认代理 [自选]"   # 开源测速站
+  - "DOMAIN-SUFFIX,speedof.me,🚀 默认代理 [自选]"   # SpeedOf.Me
+  - "DOMAIN-SUFFIX,testmy.net,🚀 默认代理 [自选]"   # TestMy.net
+  - "DOMAIN-SUFFIX,speed.cloudflare.com,🚀 默认代理 [自选]"   # Cloudflare 测速站
+  # ★ 国内测速站显式直连（geosite 里的长尾测速域名后面仍整体直连）
+  - "DOMAIN-SUFFIX,speedtest.cn,DIRECT"   # 测速网（国内，自有服务器）
+  - "DOMAIN-SUFFIX,cnspeedtest.cn,DIRECT"   # 测速网备用域
   # 兜底直连：测速站 / Windows 更新 / STUN / BT tracker（原先落 MATCH 走机场）
   - "GEOSITE,category-speedtest,DIRECT"
   - "GEOSITE,speedtest,DIRECT"
