@@ -452,7 +452,8 @@ Sparkle 的 mihomo 走命名管道而不是 TCP，端点同名：`\\.\pipe\Spark
   - 新增 4 条证书 OCSP/CRL 直连：`GEOSITE,digicert`(74) / `letsencrypt`(3) / `sectigo`(21) / `globalsign`(21) → `DIRECT`。OCSP 属 TLS 握手链路，走代理既慢又会向代理暴露正在验证哪张证书
   - **位置前提**：以上 8 条必须排在 `GEOSITE,geolocation-!cn`（27431 条）之前；实测放到它后面时 `ocsp.digicert.com` 仍显示 `match GeoSite(geolocation-!cn)`
   - `rules` 118 条 → **126 条**；离线 `mihomo -t` 通过；热加载后实测 `195.64.114.59` / `185.201.3.11` → `IPCIDR … DIRECT`，`ocsp.digicert.com` / `ocsp.globalsign.com` / `crt.sectigo.com` / `lencr.org` / `ye2.c.lencr.org` → `GeoSite … DIRECT`；家宽直连卡巴 CDN 实测 connect 19ms
-  - 观察：热加载后残留 `MATCH` 的成分变成广告追踪域（outbrain / liftdsp / bidr.io / script.ac / uuidksinc.net 等），它们不在 `category-ads-all` 里，落 `MATCH` 等于用机场流量刷广告 —— 后续可考虑并入 `🛑 广告拦截`
+  - 新增 6 条广告追踪域并入 `🛑 广告拦截 [系统]`：`outbrain.com` / `liftdsp.com` / `bidr.io` / `script.ac` / `uuidksinc.net` / `lcstp.com`。它们不在 `category-ads-all` 里，落 `MATCH` 时等于拿机场流量刷广告（实测 `ego.exe` / `WinShun.exe` 每天几十次）；实测热加载后 6 条全部 `match DomainSuffix(…) using 🛑 广告拦截 [系统][REJECT]`，`rules` 126 条 → **132 条**
+  - 有意排除的同批域名：`betterstack.net` / `betterstackdata.com` 是日志与可用性监控、`gh-proxy.com` 是 GitHub 加速反向代理、`clean.gg` 用途不明 —— 拦了会断功能，继续走 `MATCH`
 - **2026-11-15 · 3.8**
   - 进程规则后移：4 条 `PROCESS-NAME-WILDCARD`（Discord / Steam / EpicGames / WhatsApp）从域名规则之前移到 `MATCH` 之前 —— 原位置会截走这四个进程访问的**所有**域名（含内嵌浏览器打开的 youtube / github），只兜裸 IP 流量才是本意
   - 删除冗余 `GEOSITE,speedtest`（14 条）：源头只有 `include:ookla-speedtest` 一行，已被 `category-speedtest` 完全包含

@@ -21,6 +21,7 @@
 #      GEOIP,CN 去掉 no-resolve（fake-ip 下 no-resolve 会让域名目的地址匹配不上，未收录的国内站被送进隧道）。
 # 3.9：4 条卡巴裸 IP 段 + 4 条证书 OCSP/CRL（digicert/letsencrypt/sectigo/globalsign）直连，
 #      必须排在 GEOSITE,geolocation-!cn 之前（否则被它先吃掉）；IP-ASN 语法可用但实测匹配不生效。
+#      另补 6 条广告追踪域（outbrain / liftdsp / bidr.io / script.ac / uuidksinc.net / lcstp.com）并入 🛑 广告拦截。
 # ============================================================
 
 # ============================================================
@@ -457,6 +458,14 @@ rules:
 
   # 广告（原 ads provider → 单行 GEOSITE，已内联）
   - "GEOSITE,category-ads-all,🛑 广告拦截 [系统]"
+
+  # 广告追踪域（3.9）：geosite 的 category-ads-all 没收录，落 MATCH 时等于拿机场流量刷广告
+  - "DOMAIN-SUFFIX,outbrain.com,🛑 广告拦截 [系统]"      # Outbrain 原生广告
+  - "DOMAIN-SUFFIX,liftdsp.com,🛑 广告拦截 [系统]"       # Lift DSP 竞价
+  - "DOMAIN-SUFFIX,bidr.io,🛑 广告拦截 [系统]"           # Beeswax / bidr 竞价遥测
+  - "DOMAIN-SUFFIX,script.ac,🛑 广告拦截 [系统]"         # Adcash
+  - "DOMAIN-SUFFIX,uuidksinc.net,🛑 广告拦截 [系统]"     # 广告联盟统计
+  - "DOMAIN-SUFFIX,lcstp.com,🛑 广告拦截 [系统]"         # 落地页追踪
 
   # AI（原 ai provider）
   - "GEOSITE,category-ai-!cn,🤖 AI服务 [自选]"
